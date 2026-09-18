@@ -1,6 +1,5 @@
 package io.github.amine2233.validation
 
-
 /**
  * Validates that the data is `null`. Combine with `!` to require a value.
  *

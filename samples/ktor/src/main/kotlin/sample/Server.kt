@@ -16,24 +16,36 @@ import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class SignUpRequest(val email: String, val password: String, val age: Int) : Validatable<SignUpRequest> {
-    override fun validations() = validations<SignUpRequest> {
-        add(SignUpRequest::email, Validator.email)
-        add(SignUpRequest::password, Validator.count(min = 8) and Validator.alphanumeric)
-        add(SignUpRequest::age, Validator.range(min = 18))
-    }
+data class SignUpRequest(
+    val email: String,
+    val password: String,
+    val age: Int,
+) : Validatable<SignUpRequest> {
+    override fun validations() =
+        validations<SignUpRequest> {
+            add(SignUpRequest::email, Validator.email)
+            add(SignUpRequest::password, Validator.count(min = 8) and Validator.alphanumeric)
+            add(SignUpRequest::age, Validator.range(min = 18))
+        }
 }
 
 @Serializable
-data class FieldError(val path: String, val reason: String)
+data class FieldError(
+    val path: String,
+    val reason: String,
+)
 
 @Serializable
-data class ErrorResponse(val error: String, val errors: List<FieldError>)
-
-fun ValidationError.toResponse() = ErrorResponse(
-    error = reason,
-    errors = flatten().map { FieldError(it.path.joinToString("."), it.reason) },
+data class ErrorResponse(
+    val error: String,
+    val errors: List<FieldError>,
 )
+
+fun ValidationError.toResponse() =
+    ErrorResponse(
+        error = reason,
+        errors = flatten().map { FieldError(it.path.joinToString("."), it.reason) },
+    )
 
 fun Application.module() {
     install(ContentNegotiation) { json() }

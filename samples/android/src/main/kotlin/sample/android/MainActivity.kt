@@ -1,6 +1,5 @@
 package sample.android
 
-import io.github.amine2233.validation.*
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.amine2233.validation.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,12 +43,13 @@ fun SignUpScreen(modifier: Modifier = Modifier) {
         Button(
             enabled = form.isValid,
             onClick = {
-                result = try {
-                    form.validate()
-                    "✅ Sign-up payload is valid"
-                } catch (error: ValidateErrors) {
-                    "❌ ${error.reason}"
-                }
+                result =
+                    try {
+                        form.validate()
+                        "✅ Sign-up payload is valid"
+                    } catch (error: ValidateErrors) {
+                        "❌ ${error.reason}"
+                    }
             },
         ) { Text("Sign up") }
         Text(result, Modifier.padding(top = 16.dp))
@@ -56,7 +57,12 @@ fun SignUpScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun ValidatedField(label: String, value: String, validation: FieldValidation, onChange: (String) -> Unit) {
+private fun ValidatedField(
+    label: String,
+    value: String,
+    validation: FieldValidation,
+    onChange: (String) -> Unit,
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,

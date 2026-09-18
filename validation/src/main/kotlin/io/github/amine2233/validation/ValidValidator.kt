@@ -1,6 +1,5 @@
 package io.github.amine2233.validation
 
-
 /**
  * Runs a nested [Validatable]'s own validations; its failures are reported under the property path.
  *

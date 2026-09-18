@@ -8,25 +8,27 @@ import kotlin.test.assertIs
 class ValidationTests {
     @Test
     fun validate() {
-        val user = User(
-            name = "Tanner",
-            age = 23,
-            pet = Pet(name = "Zizek Pulaski", age = 4),
-            preferedColors = listOf("blue?", "green?"),
-            luckyNumber = 7,
-            email = "tanner@vapor.codes",
-        )
+        val user =
+            User(
+                name = "Tanner",
+                age = 23,
+                pet = Pet(name = "Zizek Pulaski", age = 4),
+                preferedColors = listOf("blue?", "green?"),
+                luckyNumber = 7,
+                email = "tanner@vapor.codes",
+            )
         user.validate()
         user.pet.validate()
 
-        val secondUser = User(
-            name = "Natan",
-            age = 30,
-            pet = Pet(name = "Nina Simone", age = 4),
-            preferedColors = listOf("pink"),
-            profilePictureURL = "https://www.somedomain.com/somePath.png",
-            email = "natan@vapor.codes",
-        )
+        val secondUser =
+            User(
+                name = "Natan",
+                age = 30,
+                pet = Pet(name = "Nina Simone", age = 4),
+                preferedColors = listOf("pink"),
+                profilePictureURL = "https://www.somedomain.com/somePath.png",
+                email = "natan@vapor.codes",
+            )
         secondUser.validate()
     }
 
@@ -51,18 +53,20 @@ class ValidationTests {
         Validator.ascii.validate("\n\r\t")
         assertFailsWith<ValidationError> { Validator.ascii.validate("\n\r\tĩ") }
         Validator.ascii.validate(" !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
-        val error = assertFailsWith<ValidationError> {
-            Validator.ascii.validate("ABCDEFGHIJKLMNOPQR🤠STUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
-        }
+        val error =
+            assertFailsWith<ValidationError> {
+                Validator.ascii.validate("ABCDEFGHIJKLMNOPQR🤠STUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+            }
         assertEquals("data contains an invalid character: '🤠' (allowed: ASCII)", error.reason)
     }
 
     @Test
     fun alphanumeric() {
         Validator.alphanumeric.validate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
-        val error = assertFailsWith<ValidationError> {
-            Validator.alphanumeric.validate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
-        }
+        val error =
+            assertFailsWith<ValidationError> {
+                Validator.alphanumeric.validate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+            }
         assertEquals("data contains an invalid character: '+' (allowed: A-Z, a-z, 0-9)", error.reason)
     }
 
@@ -263,9 +267,10 @@ class ValidationTests {
 
     @Test
     fun unexpectedExceptionsPropagate() {
-        val validations = validations<Pet> {
-            add(Pet::name, Validator("valid") { error("boom") })
-        }
+        val validations =
+            validations<Pet> {
+                add(Pet::name, Validator("valid") { error("boom") })
+            }
         assertFailsWith<IllegalStateException> { validations.run(Pet("Rex", 3)) }
         assertFailsWith<IllegalStateException> { (Validator<String>("x") { error("boom") } or Validator.email).validate("a") }
     }
@@ -284,12 +289,14 @@ class ValidationTests {
 
     @Test
     fun customValidatorType() {
-        val isVapor = object : ValidatorType<String> {
-            override val validatorReadable = "vapor"
-            override fun validate(data: String) {
-                if (data != "vapor") throw BasicValidationError("is not vapor")
+        val isVapor =
+            object : ValidatorType<String> {
+                override val validatorReadable = "vapor"
+
+                override fun validate(data: String) {
+                    if (data != "vapor") throw BasicValidationError("is not vapor")
+                }
             }
-        }
         isVapor.validator().validate("vapor")
         assertFailsWith<ValidationError> { isVapor.validator().validate("swift") }
         assertEquals("not vapor", (!isVapor.validator()).readable)
@@ -297,28 +304,37 @@ class ValidationTests {
 
     @Test
     fun explicitPathAndCustomClosures() {
-        val validations = validations<Pet> {
-            add(Pet::name, Validator.alphanumeric, at = listOf("pet", "first_name"))
-            add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
-            add("has a name matching its age") { pet ->
-                if (pet.name.length != pet.age) throw BasicValidationError("name/age mismatch")
+        val validations =
+            validations<Pet> {
+                add(Pet::name, Validator.alphanumeric, at = listOf("pet", "first_name"))
+                add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
+                add("has a name matching its age") { pet ->
+                    if (pet.name.length != pet.age) throw BasicValidationError("name/age mismatch")
+                }
             }
-        }
         val error = assertFailsWith<ValidateErrors> { validations.run(Pet(name = "Re x", age = 3)) }
         assertEquals(
             "pet.first_name contains an invalid character: ' ' (allowed: A-Z, a-z, 0-9), age is odd, data name/age mismatch",
             error.reason,
         )
-        assertEquals("pet.first_name: is in character set (A-Z, a-z, 0-9)\nage: is even\nhas a name matching its age", validations.toString())
+        assertEquals(
+            "pet.first_name: is in character set (A-Z, a-z, 0-9)\nage: is even\nhas a name matching its age",
+            validations.toString(),
+        )
         assertEquals(listOf(listOf("pet", "first_name"), listOf("age"), emptyList()), error.flatten().map { it.path })
     }
 
     @Test
     fun nestedValidatableReportsDottedPaths() {
-        data class Toy(val name: String) : Validatable<Toy> {
+        data class Toy(
+            val name: String,
+        ) : Validatable<Toy> {
             override fun validations() = validations<Toy> { add(Toy::name, Validator.count(min = 3)) }
         }
-        data class Owner(val toy: Toy?) : Validatable<Owner> {
+
+        data class Owner(
+            val toy: Toy?,
+        ) : Validatable<Owner> {
             override fun validations() = validations<Owner> { add(Owner::toy, Validator.valid()) }
         }
         Owner(toy = null).validate()
@@ -338,21 +354,26 @@ data class User(
     val profilePictureURL: String? = null,
     val preferedColors: List<String> = emptyList(),
 ) : Validatable<User> {
-    override fun validations() = validations<User> {
-        add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
-        add(User::age, Validator.range(min = 18))
-        add(User::email, Validator.nil or Validator.email)
-        add(User::email, Validator.email or Validator.nil)
-        add(User::luckyNumber, Validator.nil or Validator.oneOf(5, 7))
-        add(User::profilePictureURL, Validator.url or Validator.nil)
-        add(User::pet, Validator.valid())
-        add(User::preferedColors, !Validator.empty)
-    }
+    override fun validations() =
+        validations<User> {
+            add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+            add(User::age, Validator.range(min = 18))
+            add(User::email, Validator.nil or Validator.email)
+            add(User::email, Validator.email or Validator.nil)
+            add(User::luckyNumber, Validator.nil or Validator.oneOf(5, 7))
+            add(User::profilePictureURL, Validator.url or Validator.nil)
+            add(User::pet, Validator.valid())
+            add(User::preferedColors, !Validator.empty)
+        }
 }
 
-data class Pet(val name: String, val age: Int) : Validatable<Pet> {
-    override fun validations() = validations<Pet> {
-        add(Pet::name, Validator.count(min = 5) and Validator.characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces))
-        add(Pet::age, Validator.range(min = 3))
-    }
+data class Pet(
+    val name: String,
+    val age: Int,
+) : Validatable<Pet> {
+    override fun validations() =
+        validations<Pet> {
+            add(Pet::name, Validator.count(min = 5) and Validator.characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces))
+            add(Pet::age, Validator.range(min = 3))
+        }
 }

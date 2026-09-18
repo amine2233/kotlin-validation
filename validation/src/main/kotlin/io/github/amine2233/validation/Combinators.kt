@@ -1,6 +1,5 @@
 package io.github.amine2233.validation
 
-
 /**
  * Combines two validators with AND logic, succeeding only if both succeed. Both are always run, so the
  * error lists every failure.

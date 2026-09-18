@@ -1,6 +1,5 @@
 package io.github.amine2233.validation
 
-
 /**
  * A set of Unicode code points, described by [traits] for error messages. Union two sets with `+`.
  *
@@ -30,25 +29,35 @@ public class CharacterSet(
         /** Letters in any script. */
         public val letters: CharacterSet = CharacterSet(listOf("A-Z", "a-z"), Character::isLetter)
 
-        private val alphanumericTypes = setOf(
-            Character.UPPERCASE_LETTER, Character.LOWERCASE_LETTER, Character.TITLECASE_LETTER,
-            Character.MODIFIER_LETTER, Character.OTHER_LETTER,
-            Character.NON_SPACING_MARK, Character.ENCLOSING_MARK, Character.COMBINING_SPACING_MARK,
-            Character.DECIMAL_DIGIT_NUMBER, Character.LETTER_NUMBER, Character.OTHER_NUMBER,
-        ).map(Byte::toInt).toSet()
+        private val alphanumericTypes =
+            setOf(
+                Character.UPPERCASE_LETTER,
+                Character.LOWERCASE_LETTER,
+                Character.TITLECASE_LETTER,
+                Character.MODIFIER_LETTER,
+                Character.OTHER_LETTER,
+                Character.NON_SPACING_MARK,
+                Character.ENCLOSING_MARK,
+                Character.COMBINING_SPACING_MARK,
+                Character.DECIMAL_DIGIT_NUMBER,
+                Character.LETTER_NUMBER,
+                Character.OTHER_NUMBER,
+            ).map(Byte::toInt).toSet()
 
         /** Decimal digits. */
         public val decimalDigits: CharacterSet = CharacterSet("0-9", Character::isDigit)
 
         /** Space, tab and other Unicode space separators, without newlines. */
-        public val whitespaces: CharacterSet = CharacterSet("whitespace") {
-            it == '\t'.code || Character.getType(it) == Character.SPACE_SEPARATOR.toInt()
-        }
+        public val whitespaces: CharacterSet =
+            CharacterSet("whitespace") {
+                it == '\t'.code || Character.getType(it) == Character.SPACE_SEPARATOR.toInt()
+            }
 
         /** `\n`, `\r`, and the other Unicode line and paragraph separators. */
-        public val newlines: CharacterSet = CharacterSet("newlines") {
-            it in 0x0A..0x0D || it == 0x85 || it == 0x2028 || it == 0x2029
-        }
+        public val newlines: CharacterSet =
+            CharacterSet("newlines") {
+                it in 0x0A..0x0D || it == 0x85 || it == 0x2028 || it == 0x2029
+            }
 
         /** Exactly the characters of [chars]. */
         public fun of(chars: String): CharacterSet {

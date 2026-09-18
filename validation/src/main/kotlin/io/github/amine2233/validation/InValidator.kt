@@ -1,6 +1,5 @@
 package io.github.amine2233.validation
 
-
 /**
  * Validates that the data is one of [values].
  *

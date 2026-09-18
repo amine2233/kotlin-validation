@@ -57,20 +57,24 @@ public class Validations<M> {
      *         if (model.password != model.confirmation) throw BasicValidationError("has mismatching passwords")
      *     }
      */
-    public fun add(readable: String, custom: (M) -> Unit) {
+    public fun add(
+        readable: String,
+        custom: (M) -> Unit,
+    ) {
         storage += Validator(readable, closure = custom)
     }
 
     /** Runs every validator on [model], throwing [ValidateErrors] if at least one fails. */
     public fun run(model: M) {
-        val errors = storage.mapNotNull { validator ->
-            try {
-                validator.validate(model)
-                null
-            } catch (error: ValidationError) {
-                error
+        val errors =
+            storage.mapNotNull { validator ->
+                try {
+                    validator.validate(model)
+                    null
+                } catch (error: ValidationError) {
+                    error
+                }
             }
-        }
         if (errors.isNotEmpty()) throw ValidateErrors(errors)
     }
 
