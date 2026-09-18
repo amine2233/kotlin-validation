@@ -14,22 +14,33 @@ Describe how a model's properties should be validated with composable validators
 - Build: Gradle 9.7.1 + Kotlin 2.4.20, pinned through `mise.toml` and the Gradle wrapper
 
 ```bash
-mise install        # JDK + Gradle
-mise run test       # every module's unit tests
-mise run cli        # run the CLI sample
-mise run ktor       # run the Ktor sample on :8080
-mise run android    # assemble the Android sample APK
-mise run publish_local   # publish io.github.amine2233:validation:0.1.0 to ~/.m2
+mise install             # JDK, Node (release tooling), ktlint
+mise run test            # every module's unit tests
+mise run lint            # ktlint (mise run format fixes what it can)
+mise run cli             # run the CLI sample
+mise run ktor            # run the Ktor sample on :8080
+mise run android         # assemble the Android sample APK
+mise run publish_local   # publish io.github.amine2233:validation:0.1.0-SNAPSHOT to ~/.m2
 ```
 
 ## Installation
 
-Until it is on Maven Central, publish locally (`mise run publish_local`) and depend on it:
+Releases are published to GitHub Packages:
 
 ```kotlin
-repositories { mavenLocal(); mavenCentral() }
-dependencies { implementation("io.github.amine2233:validation:0.1.0") }
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/amine2233/kotlin-validation")
+        credentials {
+            username = providers.gradleProperty("gpr.user").orElse(System.getenv("GITHUB_ACTOR")).get()
+            password = providers.gradleProperty("gpr.key").orElse(System.getenv("GITHUB_TOKEN")).get()
+        }
+    }
+}
+dependencies { implementation("io.github.amine2233:validation:<version>") }
 ```
+
+For local work, `mise run publish_local` puts a `0.1.0-SNAPSHOT` in `~/.m2` (`repositories { mavenLocal() }`).
 
 Inside this repository, samples use `implementation(project(":validation"))`.
 
@@ -215,6 +226,18 @@ samples/ktor/        POST /signup with StatusPages error mapping + testApplicati
 samples/android/     Compose form using shared rules (included only when ANDROID_HOME points to an SDK)
 docs/NEXT_ITERATIONS.md   known gaps and candidate improvements
 ```
+
+## CI/CD
+
+CI and releases come from [kotlin-ci-shared](https://github.com/amine2233/kotlin-ci-shared).
+All logic lives in `mise.toml`:
+
+- `mise run test` / `mise run lint` — what the `CI` workflow runs on pull requests.
+- **Actions → Release → Run workflow** runs semantic-release (or automatically
+  on every push to `main` when the repo variable `AUTO_RELEASE=true` is set): it tags
+  `vX.Y.Z`, updates `CHANGELOG.md`, publishes `io.github.amine2233:validation` to GitHub
+  Packages and creates the GitHub release with the jars attached.
+- `mise run release --dry-run` previews the next version locally.
 
 ## License
 

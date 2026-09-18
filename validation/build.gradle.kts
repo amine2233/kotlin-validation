@@ -6,9 +6,6 @@ plugins {
     `maven-publish`
 }
 
-group = "io.github.amine2233"
-version = "0.1.0"
-
 kotlin {
     explicitApi()
     compilerOptions {
@@ -35,14 +32,38 @@ tasks.test {
 
 publishing {
     publications {
-        create<MavenPublication>("maven") {
-            artifactId = "validation"
+        create<MavenPublication>("gpr") {
             from(components["java"])
+            groupId = project.group.toString()
+            artifactId = "validation"
+            version = project.version.toString()
             pom {
-                name = "kotlin-validation"
-                description = "Declarative, composable model validation for Kotlin — a port of amine2233/Validation (Swift)"
-                url = "https://github.com/amine2233/kotlin-validation"
-                licenses { license { name = "MIT" } }
+                name.set("Validation")
+                description.set("Declarative, composable model validation for Kotlin — a port of amine2233/Validation (Swift)")
+                url.set("https://github.com/amine2233/kotlin-validation")
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("amine2233")
+                        name.set("Amine Bensalah")
+                    }
+                }
+                scm { url.set("https://github.com/amine2233/kotlin-validation") }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/amine2233/kotlin-validation")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
             }
         }
     }
