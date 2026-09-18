@@ -1,0 +1,34 @@
+[tools]
+java = "temurin-21"
+gradle = "9.7.1"
+
+[env]
+ANDROID_HOME = "{{ env.HOME }}/Library/Android/sdk"
+
+[tasks.build]
+description = "Compile every module"
+run = "./gradlew build -x test"
+
+[tasks.test]
+description = "Run the library and sample unit tests"
+run = "./gradlew test"
+
+[tasks.check]
+description = "Build + tests + lint (used by CI)"
+run = "./gradlew check"
+
+[tasks.cli]
+description = "Run the CLI sample"
+run = "./gradlew :samples:cli:run --quiet"
+
+[tasks.ktor]
+description = "Run the Ktor sample server on http://localhost:8080"
+run = "./gradlew :samples:ktor:run"
+
+[tasks.android]
+description = "Assemble the Android sample (debug APK)"
+run = "./gradlew :samples:android:assembleDebug"
+
+[tasks.publish_local]
+description = "Publish the library to ~/.m2 so other projects can depend on it"
+run = "./gradlew :validation:publishToMavenLocal"

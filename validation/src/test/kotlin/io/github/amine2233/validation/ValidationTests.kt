@@ -1,0 +1,358 @@
+package io.github.amine2233.validation
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+
+class ValidationTests {
+    @Test
+    fun validate() {
+        val user = User(
+            name = "Tanner",
+            age = 23,
+            pet = Pet(name = "Zizek Pulaski", age = 4),
+            preferedColors = listOf("blue?", "green?"),
+            luckyNumber = 7,
+            email = "tanner@vapor.codes",
+        )
+        user.validate()
+        user.pet.validate()
+
+        val secondUser = User(
+            name = "Natan",
+            age = 30,
+            pet = Pet(name = "Nina Simone", age = 4),
+            preferedColors = listOf("pink"),
+            profilePictureURL = "https://www.somedomain.com/somePath.png",
+            email = "natan@vapor.codes",
+        )
+        secondUser.validate()
+    }
+
+    @Test
+    fun validateCollectsEveryFailureWithPaths() {
+        val user = User(name = "Bob", age = 12, pet = Pet(name = "Rex", age = 1), preferedColors = emptyList())
+        val error = assertFailsWith<ValidateErrors> { user.validate() }
+        assertEquals(
+            "name is less than required minimum of 5 characters, " +
+                "age is less than 18, " +
+                "pet.name is less than required minimum of 5 characters, pet.age is less than 3, " +
+                "preferedColors is empty",
+            error.reason,
+        )
+        assertEquals(error.reason, error.message)
+        assertEquals(4, error.errors.size)
+    }
+
+    @Test
+    fun ascii() {
+        Validator.ascii.validate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+        Validator.ascii.validate("\n\r\t")
+        assertFailsWith<ValidationError> { Validator.ascii.validate("\n\r\tĩ") }
+        Validator.ascii.validate(" !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+        val error = assertFailsWith<ValidationError> {
+            Validator.ascii.validate("ABCDEFGHIJKLMNOPQR🤠STUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+        }
+        assertEquals("data contains an invalid character: '🤠' (allowed: ASCII)", error.reason)
+    }
+
+    @Test
+    fun alphanumeric() {
+        Validator.alphanumeric.validate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+        val error = assertFailsWith<ValidationError> {
+            Validator.alphanumeric.validate("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+        }
+        assertEquals("data contains an invalid character: '+' (allowed: A-Z, a-z, 0-9)", error.reason)
+    }
+
+    @Test
+    fun characterSetUnion() {
+        val validator = Validator.characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces + CharacterSet.of("_-"))
+        validator.validate("Zizek Pulaski_the-2nd")
+        assertFailsWith<ValidationError> { validator.validate("Zizek\nPulaski") }
+        assertEquals("in character set (A-Z, a-z, 0-9, whitespace, _-)", validator.readable)
+    }
+
+    @Test
+    fun empty() {
+        Validator.empty.validate("")
+        assertFailsWith<ValidationError> { Validator.empty.validate("something") }
+        Validator.empty.validate(emptyList<Int>())
+        assertFailsWith<ValidationError> { Validator.empty.validate(listOf(1, 2)) }
+        Validator.empty.validate(null)
+        (!Validator.empty).validate(mapOf(1 to 2))
+        assertFailsWith<IllegalArgumentException> { Validator.empty.validate(42) }
+    }
+
+    @Test
+    fun email() {
+        Validator.email.validate("tanner@vapor.codes")
+        assertFailsWith<ValidationError> { Validator.email.validate("tanner@vapor.codestanner@vapor.codes") }
+        assertFailsWith<ValidationError> { Validator.email.validate("tanner@vapor.codes.") }
+        assertFailsWith<ValidationError> { Validator.email.validate("tanner@@vapor.codes") }
+        assertFailsWith<ValidationError> { Validator.email.validate("@vapor.codes") }
+        assertFailsWith<ValidationError> { Validator.email.validate("tanner@codes") }
+        assertFailsWith<ValidationError> { Validator.email.validate("asdf") }
+    }
+
+    @Test
+    fun range() {
+        Validator.range(-5..5).validate(4)
+        Validator.range(-5..5).validate(5)
+        Validator.range(-5..5).validate(-5)
+        val tooHigh = assertFailsWith<ValidationError> { Validator.range(-5..5).validate(6) }
+        assertEquals("data is greater than 5", tooHigh.reason)
+        val tooLow = assertFailsWith<ValidationError> { Validator.range(-5..5).validate(-6) }
+        assertEquals("data is less than -5", tooLow.reason)
+
+        Validator.range(min = 5).validate(Int.MAX_VALUE)
+        Validator.range(max = 1.5).validate(1.0)
+        assertFailsWith<ValidationError> { Validator.range(max = 1.5).validate(2.0) }
+
+        Validator.range(-5..<6).validate(-5)
+        Validator.range(-5..<6).validate(-4)
+        Validator.range(-5..<6).validate(5)
+        assertFailsWith<ValidationError> { Validator.range(-5..<6).validate(-6) }
+        assertFailsWith<ValidationError> { Validator.range(-5..<6).validate(6) }
+    }
+
+    @Test
+    fun countCharacters() {
+        val validator = Validator.count(1..6)
+        validator.validate("1")
+        validator.validate("123")
+        validator.validate("123456")
+        val tooShort = assertFailsWith<ValidationError> { validator.validate("") }
+        assertEquals("data is less than required minimum of 1 character", tooShort.reason)
+        val tooLong = assertFailsWith<ValidationError> { validator.validate("1234567") }
+        assertEquals("data is greater than required maximum of 6 characters", tooLong.reason)
+    }
+
+    @Test
+    fun countItems() {
+        val validator = Validator.count(1..6)
+        validator.validate(listOf(1))
+        validator.validate(listOf(1, 2, 3))
+        validator.validate(listOf(1, 2, 3, 4, 5, 6))
+        val tooShort = assertFailsWith<ValidationError> { validator.validate(emptyList<Int>()) }
+        assertEquals("data is less than required minimum of 1 item", tooShort.reason)
+        val tooLong = assertFailsWith<ValidationError> { validator.validate(listOf(1, 2, 3, 4, 5, 6, 7)) }
+        assertEquals("data is greater than required maximum of 6 items", tooLong.reason)
+        assertEquals("of length between 1 and 6", validator.readable)
+        assertEquals("of length at least 5", Validator.count(min = 5).readable)
+    }
+
+    @Test
+    fun countUsesUserPerceivedCharacters() {
+        Validator.count(max = 1).validate("🤠")
+        Validator.count(max = 1).validate("e\u0301")
+        assertFailsWith<ValidationError> { Validator.count(max = 1).validate("ab") }
+        Validator.count(min = 1).validate(null)
+    }
+
+    @Test
+    fun url() {
+        Validator.url.validate("https://www.somedomain.com/somepath.png")
+        Validator.url.validate("https://www.somedomain.com/")
+        Validator.url.validate("file:///Users/vapor/rocks/somePath.png")
+        assertFailsWith<ValidationError> { Validator.url.validate("www.somedomain.com/") }
+        assertFailsWith<ValidationError> { Validator.url.validate("bananas") }
+        assertFailsWith<ValidationError> { Validator.url.validate("http://exa mple.com") }
+        assertFailsWith<ValidationError> { Validator.url.validate("mailto:tanner@vapor.codes") }
+        Validator.url.validate("FILE:///x")
+        Validator.url.validate("http://my_host.com/")
+        Validator.url.validate("http://例え.jp/")
+    }
+
+    @Test
+    fun oneOf() {
+        Validator.oneOf(5, 7).validate(7)
+        val error = assertFailsWith<ValidationError> { Validator.oneOf(5, 7).validate(6) }
+        assertEquals("data is not in (5, 7)", error.reason)
+        Validator.oneOf(listOf("a", "b")).validate("a")
+    }
+
+    @Test
+    fun nilCombinators() {
+        val nilOrEmail: Validator<String?> = Validator.nil or Validator.email
+        nilOrEmail.validate(null)
+        nilOrEmail.validate("tanner@vapor.codes")
+        val orError = assertFailsWith<ValidationError> { nilOrEmail.validate("asdf") }
+        assertEquals("data is not nil and data is not a valid email address", orError.reason)
+
+        val required: Validator<String?> = !Validator.nil and Validator.email
+        required.validate("tanner@vapor.codes")
+        assertEquals("data is nil", assertFailsWith<ValidationError> { required.validate(null) }.reason)
+        assertEquals(
+            "data is not a valid email address",
+            assertFailsWith<ValidationError> { required.validate("asdf") }.reason,
+        )
+        assertEquals("not nil and is a valid email address", required.readable)
+    }
+
+    @Test
+    fun notKeepsIgnoringNull() {
+        (!Validator.email).validate(null)
+        (!Validator.oneOf("admin")).validate(null)
+        (!(Validator.email and Validator.url)).validate(null)
+        assertFailsWith<ValidationError> { (!Validator.nil).validate(null) }
+        assertFailsWith<ValidationError> { (!Validator.empty).validate(null) }
+        assertFailsWith<ValidationError> { (!(Validator.nil or Validator.email)).validate(null) }
+    }
+
+    @Test
+    fun ignoringNullLiftsCustomValidators() {
+        val isVapor = Validator<String>("vapor") { if (it != "vapor") throw BasicValidationError("is not vapor") }
+        val validator: Validator<String?> = Validator.nil or isVapor.ignoringNull()
+        validator.validate(null)
+        validator.validate("vapor")
+        assertFailsWith<ValidationError> { validator.validate("swift") }
+    }
+
+    @Test
+    fun flattenGivesOneErrorPerFailingRuleWithFullPaths() {
+        val user = User(name = "a!", age = 12, pet = Pet(name = "Rex", age = 1), preferedColors = emptyList())
+        val error = assertFailsWith<ValidateErrors> { user.validate() }
+        assertEquals(
+            listOf(
+                listOf("name") to "name is less than required minimum of 5 characters",
+                listOf("name") to "name contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)",
+                listOf("age") to "age is less than 18",
+                listOf("pet", "name") to "pet.name is less than required minimum of 5 characters",
+                listOf("pet", "age") to "pet.age is less than 3",
+                listOf("preferedColors") to "preferedColors is empty",
+            ),
+            error.flatten().map { it.path to it.reason },
+        )
+    }
+
+    @Test
+    fun builtInsSkipNull() {
+        Validator.email.validate(null)
+        Validator.url.validate(null)
+        Validator.range(min = 1).validate(null)
+        Validator.oneOf(1).validate(null)
+        Validator.alphanumeric.validate(null)
+        assertFailsWith<ValidationError> { Validator.nil.validate("x") }
+    }
+
+    @Test
+    fun characterSets() {
+        Validator.alphanumeric.validate("e\u0301½")
+        Validator.characterSet(CharacterSet.letters).validate("Zoë")
+        Validator.characterSet(CharacterSet.decimalDigits).validate("0123456789")
+        assertFailsWith<ValidationError> { Validator.characterSet(CharacterSet.decimalDigits).validate("1a") }
+        Validator.characterSet(CharacterSet.newlines + CharacterSet.whitespaces).validate("\n\r \t\u2028")
+        assertEquals(listOf("A-Z", "a-z", "0-9"), (CharacterSet.alphanumerics + CharacterSet.letters).traits)
+
+        val vowels = CharacterSet(emptyList()) { it in "aeiou".codePoints().toArray() }
+        assertEquals("in character set", Validator.characterSet(vowels).readable)
+        val error = assertFailsWith<ValidationError> { Validator.characterSet(vowels).validate("ab") }
+        assertEquals("data contains an invalid character: 'b'", error.reason)
+    }
+
+    @Test
+    fun countHalfOpenRangeAndRootPath() {
+        Validator.count(5..<10).validate("123456789")
+        assertFailsWith<ValidationError> { Validator.count(5..<10).validate("1234567890") }
+        val validations = validations<Pet> { add(Pet::name, Validator.count(max = 2), at = emptyList()) }
+        val error = assertFailsWith<ValidateErrors> { validations.run(Pet("Rex", 3)) }
+        assertEquals("data is greater than required maximum of 2 characters", error.reason)
+    }
+
+    @Test
+    fun unexpectedExceptionsPropagate() {
+        val validations = validations<Pet> {
+            add(Pet::name, Validator("valid") { error("boom") })
+        }
+        assertFailsWith<IllegalStateException> { validations.run(Pet("Rex", 3)) }
+        assertFailsWith<IllegalStateException> { (Validator<String>("x") { error("boom") } or Validator.email).validate("a") }
+    }
+
+    @Test
+    fun andReportsBothFailures() {
+        val validator = Validator.count(min = 5) and Validator.alphanumeric
+        assertEquals("of length at least 5 and is in character set (A-Z, a-z, 0-9)", validator.readable)
+        val error = assertFailsWith<ValidationError> { validator.validate("a!") }
+        assertEquals(
+            "data is less than required minimum of 5 characters and " +
+                "data contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)",
+            error.reason,
+        )
+    }
+
+    @Test
+    fun customValidatorType() {
+        val isVapor = object : ValidatorType<String> {
+            override val validatorReadable = "vapor"
+            override fun validate(data: String) {
+                if (data != "vapor") throw BasicValidationError("is not vapor")
+            }
+        }
+        isVapor.validator().validate("vapor")
+        assertFailsWith<ValidationError> { isVapor.validator().validate("swift") }
+        assertEquals("not vapor", (!isVapor.validator()).readable)
+    }
+
+    @Test
+    fun explicitPathAndCustomClosures() {
+        val validations = validations<Pet> {
+            add(Pet::name, Validator.alphanumeric, at = listOf("pet", "first_name"))
+            add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
+            add("has a name matching its age") { pet ->
+                if (pet.name.length != pet.age) throw BasicValidationError("name/age mismatch")
+            }
+        }
+        val error = assertFailsWith<ValidateErrors> { validations.run(Pet(name = "Re x", age = 3)) }
+        assertEquals(
+            "pet.first_name contains an invalid character: ' ' (allowed: A-Z, a-z, 0-9), age is odd, data name/age mismatch",
+            error.reason,
+        )
+        assertEquals("pet.first_name: is in character set (A-Z, a-z, 0-9)\nage: is even\nhas a name matching its age", validations.toString())
+        assertEquals(listOf(listOf("pet", "first_name"), listOf("age"), emptyList()), error.flatten().map { it.path })
+    }
+
+    @Test
+    fun nestedValidatableReportsDottedPaths() {
+        data class Toy(val name: String) : Validatable<Toy> {
+            override fun validations() = validations<Toy> { add(Toy::name, Validator.count(min = 3)) }
+        }
+        data class Owner(val toy: Toy?) : Validatable<Owner> {
+            override fun validations() = validations<Owner> { add(Owner::toy, Validator.valid()) }
+        }
+        Owner(toy = null).validate()
+        val error = assertFailsWith<ValidationError> { Owner(Toy("x")).validate() }
+        assertIs<ValidateErrors>(error)
+        assertEquals("toy.name is less than required minimum of 3 characters", error.reason)
+    }
+}
+
+data class User(
+    val id: Int? = null,
+    val name: String,
+    val age: Int,
+    val email: String? = null,
+    val pet: Pet,
+    val luckyNumber: Int? = null,
+    val profilePictureURL: String? = null,
+    val preferedColors: List<String> = emptyList(),
+) : Validatable<User> {
+    override fun validations() = validations<User> {
+        add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+        add(User::age, Validator.range(min = 18))
+        add(User::email, Validator.nil or Validator.email)
+        add(User::email, Validator.email or Validator.nil)
+        add(User::luckyNumber, Validator.nil or Validator.oneOf(5, 7))
+        add(User::profilePictureURL, Validator.url or Validator.nil)
+        add(User::pet, Validator.valid())
+        add(User::preferedColors, !Validator.empty)
+    }
+}
+
+data class Pet(val name: String, val age: Int) : Validatable<Pet> {
+    override fun validations() = validations<Pet> {
+        add(Pet::name, Validator.count(min = 5) and Validator.characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces))
+        add(Pet::age, Validator.range(min = 3))
+    }
+}
