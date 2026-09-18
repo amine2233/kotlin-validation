@@ -44,7 +44,7 @@ private inline fun failure(block: () -> Unit): ValidationError? =
         error
     }
 
-private class AndValidatorError(
+internal class AndValidatorError(
     private val left: ValidationError?,
     private val right: ValidationError?,
     path: List<String> = emptyList(),
@@ -56,7 +56,7 @@ private class AndValidatorError(
     override fun flatten(): List<ValidationError> = listOfNotNull(left, right).flatMap { it.prefixed(path).flatten() }
 }
 
-private class OrValidatorError(
+internal class OrValidatorError(
     private val left: ValidationError,
     private val right: ValidationError,
     path: List<String> = emptyList(),

@@ -3,7 +3,8 @@
 A lightweight, declarative validation library for Kotlin models — a port of
 [amine2233/Validation](https://github.com/amine2233/Validation) (Swift, itself derived from
 Vapor's Validation). Plain JVM, no dependencies: works in a CLI, in a Ktor server and in an
-Android app.
+Android app. Rules that need a network call (`suspend`) are supported without pulling in a
+coroutines runtime.
 
 Describe how a model's properties should be validated with composable validators, then call
 `validate()`. **All** failures are collected in one pass and reported with dotted key paths.
@@ -103,6 +104,7 @@ Validator.range(-5..5).validate(4)
 | `a && b`, `a \|\| b`, `!a` | `a and b`, `a or b`, `!a` |
 | `.characterSet(.alphanumerics + .whitespaces)` | `characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces)` |
 | `catch let error as any ValidationError` | `catch (error: ValidationError)` |
+| — (no equivalent in the Swift port) | `AsyncValidator` / `asyncValidations { }` / `suspend validate()` |
 | Key paths reflected via `Reflectable`/`Codable` | Property name read from `KProperty1.name` — no reflection library |
 
 Two things to know that differ from Swift:
@@ -140,6 +142,54 @@ add(User::name, Validator("vapor") { if (it != "vapor") throw BasicValidationErr
 // or on the whole model
 add("passwords match") { if (it.password != it.confirmation) throw BasicValidationError("has mismatching passwords") }
 ```
+
+### Async validators (rules that call an API)
+
+Some rules cannot be answered in memory — *"is this email already registered?"*. Those are
+`AsyncValidator`s: the same thing with a `suspend` check. `suspend` is a language feature, so the
+library still has no runtime dependency; `kotlinx-coroutines` only appears on the test classpath.
+
+```kotlin
+val emailIsFree =
+    AsyncValidator<String>("not already registered") { email ->
+        if (accountApi.isRegistered(email)) throw BasicValidationError("is already registered")
+    }
+
+data class SignUpRequest(val email: String, val age: Int) : AsyncValidatable<SignUpRequest> {
+    override fun validations() =
+        asyncValidations<SignUpRequest> {
+            add(SignUpRequest::email, Validator.email)   // phase 1: local, synchronous
+            add(SignUpRequest::age, Validator.range(min = 18))
+            add(SignUpRequest::email, emailIsFree)       // phase 2: remote
+        }
+}
+
+request.validate()   // suspends; same ValidateErrors, same paths, same flatten()
+```
+
+**Two phases, in this order.** Every synchronous rule runs first and all of their failures are
+reported at once; the async rules run afterwards, one at a time, and **only if every sync rule
+passed** — a malformed email never costs a request. The visible consequence: a failure message
+never mixes the two phases.
+
+**A failed request is not a failed validation.** `run` collects `ValidationError`s and nothing
+else, so an `IOException` or a timeout propagates to your caller (in Ktor: a 500, not a 400), and a
+`CancellationException` cancels as it should. If "could not check" should read as "invalid", decide
+that inside your rule:
+
+```kotlin
+AsyncValidator<String>("not already registered") { email ->
+    val registered = try { accountApi.isRegistered(email) } catch (_: IOException) {
+        throw BasicValidationError("could not be verified")
+    }
+    if (registered) throw BasicValidationError("is already registered")
+}
+```
+
+There are no *built-in* async validators — an async rule is by definition a call to your own API.
+Put a built-in next to one with `Validator.email.async()`, and use `and` / `or` / `!` /
+`ignoringNull()` exactly as in the sync world. A custom closure added to `asyncValidations { }`
+runs in the async phase even when its body never suspends.
 
 ## Built-in validators
 
@@ -183,7 +233,10 @@ request.validate() // throws ValidateErrors listing every field
 ## Ktor
 
 `samples/ktor` maps every `ValidationError` to a `400` with `StatusPages`, using `flatten()` for a
-per-field list next to the combined reason:
+per-field list next to the combined reason. Its `SignUpRequest` is an `AsyncValidatable`, so the
+"email already registered" rule runs in the route's existing coroutine — and an `IOException` from
+that lookup is deliberately *not* a `ValidationError`, so it surfaces as a 500 rather than telling
+the user their input is wrong:
 
 ```kotlin
 install(StatusPages) {
@@ -208,6 +261,10 @@ mise run ktor
 curl -X POST localhost:8080/signup -H 'content-type: application/json' -d '{"email":"nope","password":"short!","age":12}'
 # {"error":"email is not a valid email address, password is less than ..., age is less than 18",
 #  "errors":[{"path":"email","reason":"email is not a valid email address"}, {"path":"password","reason":"..."}, ...]}
+
+curl -X POST localhost:8080/signup -H 'content-type: application/json' \
+  -d '{"email":"taken@vapor.codes","password":"hunter2hunter2","age":30}'
+# {"error":"email is already registered","errors":[{"path":"email","reason":"email is already registered"}]}
 ```
 
 ## Android

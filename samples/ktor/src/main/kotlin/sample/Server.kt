@@ -15,17 +15,29 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import kotlinx.serialization.Serializable
 
+// ponytail: stands in for the account service; swap in a real HTTP/DB call, the rule does not change.
+private val registeredEmails = setOf("taken@vapor.codes")
+
+private suspend fun isRegistered(email: String): Boolean = email in registeredEmails
+
+/** The remote rule: only reached once the local rules pass, so a malformed email costs no request. */
+private val emailIsFree =
+    AsyncValidator<String>("not already registered") { email ->
+        if (isRegistered(email)) throw BasicValidationError("is already registered")
+    }
+
 @Serializable
 data class SignUpRequest(
     val email: String,
     val password: String,
     val age: Int,
-) : Validatable<SignUpRequest> {
+) : AsyncValidatable<SignUpRequest> {
     override fun validations() =
-        validations<SignUpRequest> {
+        asyncValidations<SignUpRequest> {
             add(SignUpRequest::email, Validator.email)
             add(SignUpRequest::password, Validator.count(min = 8) and Validator.alphanumeric)
             add(SignUpRequest::age, Validator.range(min = 18))
+            add(SignUpRequest::email, emailIsFree)
         }
 }
 

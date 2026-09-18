@@ -55,4 +55,24 @@ class ServerTest {
                 response.body(),
             )
         }
+
+    @Test
+    fun alreadyRegisteredEmailIsRejected() =
+        testApplication {
+            application { module() }
+            val client = createClient { install(ContentNegotiation) { json() } }
+            val response =
+                client.post("/signup") {
+                    contentType(ContentType.Application.Json)
+                    setBody(SignUpRequest(email = "taken@vapor.codes", password = "hunter2hunter2", age = 30))
+                }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertEquals(
+                ErrorResponse(
+                    error = "email is already registered",
+                    errors = listOf(FieldError("email", "email is already registered")),
+                ),
+                response.body(),
+            )
+        }
 }

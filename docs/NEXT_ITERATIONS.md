@@ -17,9 +17,9 @@ blocks using the library; each item is a deliberate simplification of the first 
    full `path`, but only `BasicValidationError` exposes the path-less `detail`; an `or` failure only
    has a combined `reason`. Adding `detail` to the base class would let APIs answer
    `{"path":"pet.name","message":"is less than ..."}` without string surgery.
-4. **Ktor `RequestValidation` integration.** A one-line `validate<T : Validatable<T>> { it.validate() }`
-   helper for Ktor's built-in `RequestValidation` plugin, shipped as a tiny `validation-ktor` module
-   so the core stays dependency-free.
+4. **Ktor `RequestValidation` integration.** Ktor's `RequestValidationConfig.validate { }` block is
+   itself `suspend`, so a tiny `validation-ktor` module can expose one helper for `Validatable` and
+   one for `AsyncValidatable` with no extra machinery, keeping the core dependency-free.
 5. **Form helpers in the library.** `FieldRule` / `FieldValidation` / `evaluate` currently live in
    the Android sample (mirroring the Swift DocC article). Promoting them to a `validation-forms`
    module would remove copy-paste between Android and Compose Multiplatform apps.
@@ -38,20 +38,28 @@ blocks using the library; each item is a deliberate simplification of the first 
 10. **Freeze `Validations` after build.** `add` stays callable after `validations { }` returns; a
     concurrent `add`/`run` on a shared instance (e.g. one held in a companion object) races. Copying
     the storage to an immutable list on first `run` — or a builder that returns an immutable
-    `Validations` — closes that.
+    `Validations` — closes that. `AsyncValidations` carries the same caveat across both of its
+    collections, so any fix must cover it too.
+11. **Parallel async rules.** `AsyncValidations.run` is sequential on purpose (no dependency, and
+    the sync phase usually short-circuits it). Several independent remote checks would be faster
+    with `coroutineScope` + `awaitAll` — but that needs `kotlinx-coroutines-core` at runtime, so it
+    belongs in a separate `validation-coroutines` module, the same containment used for item 4.
+12. **`AsyncValidator.valid()`** for a nested `AsyncValidatable`, the async counterpart of
+    `ValidValidator.kt`, plus an `AsyncValidatorType` if the `object`-implements-an-interface idiom
+    is wanted for async as it is for sync.
 
 ## Build & tooling
 
-11. **Publish to Maven Central** (Sonatype Central portal, signing, `-javadoc` jar via Dokka) and add
+13. **Publish to Maven Central** (Sonatype Central portal, signing, `-javadoc` jar via Dokka) and add
    `ktlint`/`detekt` to `mise run check`.
-12. **CI.** GitHub Actions job running `mise run check` on Linux (JVM modules) and one with the
-    Android SDK for `assembleDebug`. `settings.gradle.kts` already skips the Android sample when
-    `ANDROID_HOME` is missing.
-13. **Binary compatibility validator** (`org.jetbrains.kotlinx.binary-compatibility-validator`) once
+14. **CI coverage of the Android sample.** The shared CI runs `mise run test` on `ubuntu-latest`,
+    whose preinstalled SDK makes `settings.gradle.kts` include `:samples:android`; if that proves
+    slow or flaky, gate the sample behind an explicit `-PwithAndroid` flag instead of `ANDROID_HOME`.
+15. **Binary compatibility validator** (`org.jetbrains.kotlinx.binary-compatibility-validator`) once
     the public API is frozen — `explicitApi()` is already on.
 
 ## Samples
 
-14. **Android instrumentation/UI test** for the Compose form (`createComposeRule` or Robolectric) —
+16. **Android instrumentation/UI test** for the Compose form (`createComposeRule` or Robolectric) —
     the review caught a `rememberSaveable` crash that no unit test composes the screen to catch.
-15. **Ktor `RequestValidation` sample** once item 4 exists, and a malformed-JSON test case.
+17. **Ktor `RequestValidation` sample** once item 4 exists, and a malformed-JSON test case.

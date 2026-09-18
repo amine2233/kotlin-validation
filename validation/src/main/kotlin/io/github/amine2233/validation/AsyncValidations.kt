@@ -1,0 +1,113 @@
+package io.github.amine2233.validation
+
+import kotlin.reflect.KProperty1
+
+/**
+ * An ordered collection of validators for a model [M], where some checks suspend.
+ *
+ * [run] executes the synchronous rules first and reports **all** of their failures at once; the async rules
+ * run afterwards, one at a time, and only when every synchronous rule passed — no network call is spent on
+ * input that is already invalid.
+ *
+ *     val validations = asyncValidations<SignUpRequest> {
+ *         add(SignUpRequest::email, Validator.email)
+ *         add(SignUpRequest::email, emailIsAvailable)
+ *         add(SignUpRequest::username, "is taken") { if (api.isTaken(it)) throw BasicValidationError("is taken") }
+ *     }
+ *     validations.run(request)
+ */
+public class AsyncValidations<M> {
+    private val sync = Validations<M>()
+    private val storage = mutableListOf<AsyncValidator<M>>()
+
+    /**
+     * Adds a synchronous [validator] for [property], run in the first phase. Failures are reported at [at],
+     * which defaults to the property name.
+     *
+     *     validations.add(SignUpRequest::email, Validator.email)
+     */
+    public fun <T> add(
+        property: KProperty1<M, T>,
+        validator: Validator<T>,
+        at: List<String> = listOf(property.name),
+    ): Unit = sync.add(property, validator, at)
+
+    /**
+     * Adds a suspending [validator] for [property], run in the second phase.
+     *
+     *     validations.add(SignUpRequest::email, emailIsAvailable)
+     */
+    public fun <T> add(
+        property: KProperty1<M, T>,
+        validator: AsyncValidator<T>,
+        at: List<String> = listOf(property.name),
+    ): Unit = add(property, "is ${validator.readable}", at) { validator.validate(it) }
+
+    /**
+     * Adds a custom suspending check for [property], run in the second phase. Throw a [ValidationError] from
+     * [custom] when the value is invalid.
+     *
+     *     validations.add(SignUpRequest::email, "is not already registered") { email ->
+     *         if (api.isRegistered(email)) throw BasicValidationError("is already registered")
+     *     }
+     */
+    public fun <T> add(
+        property: KProperty1<M, T>,
+        readable: String,
+        at: List<String> = listOf(property.name),
+        custom: suspend (T) -> Unit,
+    ) {
+        add("${at.joinToString(".")}: $readable") { model ->
+            try {
+                custom(property.get(model))
+            } catch (error: ValidationError) {
+                throw error.prefixed(at)
+            }
+        }
+    }
+
+    /**
+     * Adds a custom suspending check on the whole model, run in the second phase. Throw a [ValidationError]
+     * from [custom] when the model is invalid.
+     *
+     *     validations.add("has an unused invite code") { model ->
+     *         if (api.isSpent(model.inviteCode)) throw BasicValidationError("has a spent invite code")
+     *     }
+     */
+    public fun add(
+        readable: String,
+        custom: suspend (M) -> Unit,
+    ) {
+        storage += AsyncValidator(readable, closure = custom)
+    }
+
+    /**
+     * Runs the synchronous rules, then — only if they all passed — every async rule in declaration order,
+     * throwing [ValidateErrors] if at least one fails.
+     *
+     * Only [ValidationError]s are collected: a `CancellationException`, or the `IOException` of a request
+     * that never reached the server, propagates to the caller. Catch those inside your own rule and throw a
+     * [BasicValidationError] if "could not check" should read as "invalid".
+     */
+    public suspend fun run(model: M) {
+        sync.run(model)
+        val errors =
+            storage.mapNotNull { validator ->
+                try {
+                    validator.validate(model)
+                    null
+                } catch (error: ValidationError) {
+                    error
+                }
+            }
+        if (errors.isNotEmpty()) throw ValidateErrors(errors)
+    }
+
+    override fun toString(): String =
+        listOf(sync.toString(), storage.joinToString("\n"))
+            .filter { it.isNotEmpty() }
+            .joinToString("\n")
+}
+
+/** Builds an [AsyncValidations] for [M]. */
+public inline fun <M> asyncValidations(build: AsyncValidations<M>.() -> Unit): AsyncValidations<M> = AsyncValidations<M>().apply(build)
