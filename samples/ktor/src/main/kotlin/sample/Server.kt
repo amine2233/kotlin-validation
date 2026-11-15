@@ -35,7 +35,7 @@ data class SignUpRequest(
     override fun validations() =
         asyncValidations<SignUpRequest> {
             add(SignUpRequest::email, Validator.email)
-            add(SignUpRequest::password, Validator.count(min = 8) and Validator.alphanumeric)
+            add(SignUpRequest::password, Validator.length(min = 8) and Validator.alphanumeric)
             add(SignUpRequest::age, Validator.range(min = 18))
             add(SignUpRequest::email, emailIsFree)
         }
