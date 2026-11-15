@@ -54,7 +54,9 @@ blocks using the library; each item is a deliberate simplification of the first 
 14. **CI coverage of the Android sample.** The shared CI runs `mise run test` on `ubuntu-latest`,
     whose preinstalled SDK makes `settings.gradle.kts` include `:samples:android`; if that proves
     slow or flaky, gate the sample behind an explicit `-PwithAndroid` flag instead of `ANDROID_HOME`.
-15. **Binary compatibility validator** (`org.jetbrains.kotlinx.binary-compatibility-validator`) once
+15. **Done.** `org.jetbrains.kotlinx.binary-compatibility-validator` 0.18.2 now locks the
+    `:validation` public API in `validation/api/validation.api`.
+    **Binary compatibility validator** (`org.jetbrains.kotlinx.binary-compatibility-validator`) once
     the public API is frozen — `explicitApi()` is already on.
 
 ## Samples
