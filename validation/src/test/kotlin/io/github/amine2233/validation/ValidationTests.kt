@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class ValidationTests {
     @Test
@@ -390,6 +391,45 @@ class ValidationTests {
         assertIs<ValidateErrors>(error)
         assertEquals("toy.name is less than required minimum of 3 characters", error.reason)
     }
+
+    @Test
+    fun basicValidationErrorHasNoStackTrace() {
+        val error = assertFailsWith<BasicValidationError> { Validator.email.validate("not-an-email") }
+        assertTrue(error.stackTrace.isEmpty())
+        assertEquals(error.reason, error.message)
+    }
+
+    @Test
+    fun validateErrorsHasNoStackTraceAndStillFlattens() {
+        val user = User(name = "Bob", age = 12, pet = Pet(name = "Rex", age = 1), preferedColors = emptyList())
+        val error = assertFailsWith<ValidateErrors> { user.validate() }
+        assertTrue(error.stackTrace.isEmpty())
+        assertEquals(
+            listOf(listOf("name"), listOf("age"), listOf("pet", "name"), listOf("pet", "age"), listOf("preferedColors")),
+            error.flatten().map { it.path },
+        )
+    }
+
+    @Test
+    fun customValidationErrorHasNoStackTrace() {
+        val error = assertFailsWith<CustomValidationError> { throw CustomValidationError() }
+        assertTrue(error.stackTrace.isEmpty())
+    }
+
+    @Test
+    fun validationErrorIgnoresSuppressedExceptions() {
+        val error = BasicValidationError("is invalid")
+        error.addSuppressed(IllegalStateException("suppressed"))
+        assertTrue(error.suppressed.isEmpty())
+    }
+}
+
+class CustomValidationError(
+    path: List<String> = emptyList(),
+) : ValidationError(path) {
+    override val reason: String get() = "custom failure"
+
+    override fun prefixed(path: List<String>): CustomValidationError = CustomValidationError(path + this.path)
 }
 
 data class User(
