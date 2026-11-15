@@ -13,7 +13,8 @@ blocks using the library; each item is a deliberate simplification of the first 
    `add(User::age, Validator.count(1..3))` compiles and fails with `IllegalArgumentException`. Typed
    variants (`length` for `CharSequence?`, `count` for `Collection<*>?`) would move that to compile
    time at the cost of diverging from the Swift names.
-3. **Message without path on every leaf.** `flatten()` gives one error per failing rule with its
+3. **Done.** `ValidationError.detail` now gives the path-less message on every error.
+   **Message without path on every leaf.** `flatten()` gives one error per failing rule with its
    full `path`, but only `BasicValidationError` exposes the path-less `detail`; an `or` failure only
    has a combined `reason`. Adding `detail` to the base class would let APIs answer
    `{"path":"pet.name","message":"is less than ..."}` without string surgery.

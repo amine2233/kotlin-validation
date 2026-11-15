@@ -281,6 +281,59 @@ class ValidationTests {
     }
 
     @Test
+    fun flattenGivesPathLessDetailPerFailingRule() {
+        val user = User(name = "a!", age = 12, pet = Pet(name = "Rex", age = 1), preferedColors = emptyList())
+        val error = assertFailsWith<ValidateErrors> { user.validate() }
+        assertEquals(
+            listOf(
+                listOf("name") to "is less than required minimum of 5 characters",
+                listOf("name") to "contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)",
+                listOf("age") to "is less than 18",
+                listOf("pet", "name") to "is less than required minimum of 5 characters",
+                listOf("pet", "age") to "is less than 3",
+                listOf("preferedColors") to "is empty",
+            ),
+            error.flatten().map { it.path to it.detail },
+        )
+    }
+
+    @Test
+    fun flattenGivesPathLessDetailForOr() {
+        val user = User(name = "abcde", age = 18, email = "asdf", pet = Pet(name = "Kitty", age = 4), preferedColors = listOf("blue"))
+        val flattened = assertFailsWith<ValidateErrors> { user.validate() }.flatten()
+        assertEquals(listOf(listOf("email"), listOf("email")), flattened.map { it.path })
+        assertEquals(
+            listOf("is not nil and is not a valid email address", "is not a valid email address and is not nil"),
+            flattened.map { it.detail },
+        )
+        assertEquals("email is not nil and email is not a valid email address", flattened.first().reason)
+    }
+
+    @Test
+    fun detailOmitsOwnPathOnCompositeErrors() {
+        val andError = assertFailsWith<ValidationError> { (Validator.count(min = 5) and Validator.alphanumeric).validate("a!") }
+        val andDetail = "is less than required minimum of 5 characters and contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)"
+        assertEquals(andDetail, andError.detail)
+        val prefixedAnd = andError.prefixed(listOf("name"))
+        assertEquals(andDetail, prefixedAnd.detail)
+        assertTrue(prefixedAnd.reason.startsWith("name is less than"))
+
+        val petError = assertFailsWith<ValidateErrors> { Pet("Rex", 1).validate() }
+        val petDetail = "name is less than required minimum of 5 characters, age is less than 3"
+        assertEquals(petDetail, petError.detail)
+        val prefixedPet = petError.prefixed(listOf("pet"))
+        assertEquals(petDetail, prefixedPet.detail)
+        assertTrue(prefixedPet.reason.startsWith("pet.name is less than"))
+    }
+
+    @Test
+    fun customErrorDetailDefaultsToReason() {
+        val error = CustomValidationError()
+        assertEquals("custom failure", error.detail)
+        assertEquals(error.reason, error.detail)
+    }
+
+    @Test
     fun builtInsSkipNull() {
         Validator.email.validate(null)
         Validator.url.validate(null)
