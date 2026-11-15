@@ -7,7 +7,7 @@ import kotlin.reflect.KProperty1
  * failure at once as a single [ValidateErrors].
  *
  *     val validations = validations<User> {
- *         add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+ *         add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
  *         add(User::age, Validator.range(min = 18))
  *         add(User::email, Validator.nil or Validator.email)
  *     }
@@ -35,7 +35,7 @@ public class Validations<M> {
     /**
      * Adds [validator] for [property]. Failures are reported at [at], which defaults to the property name.
      *
-     *     validations.add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+     *     validations.add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
      *     validations.add(User::name, Validator.alphanumeric, at = listOf("first_name"))
      *
      * @throws IllegalStateException if this instance is frozen (returned by [validations]).
@@ -64,6 +64,46 @@ public class Validations<M> {
         add("${at.joinToString(".")}: $readable") { model ->
             try {
                 custom(property.get(model))
+            } catch (error: ValidationError) {
+                throw error.prefixed(at)
+            }
+        }
+    }
+
+    /**
+     * Adds [validator] for the nested property at [path]. Failures are reported at [at], which defaults to the
+     * dotted path. The rule is skipped when the outer value is `null`.
+     *
+     *     validations.add(path(User::pet, Pet::name), Validator.length(min = 5))
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [validations]).
+     */
+    public fun <T> add(
+        path: PropertyPath<M, T>,
+        validator: Validator<T>,
+        at: List<String> = path.names,
+    ): Unit = add(path, "is ${validator.readable}", at) { validator.validate(it) }
+
+    /**
+     * Adds a custom check for the nested property at [path]. Throw a [ValidationError] from [custom] when the
+     * value is invalid. The rule is skipped when the outer value is `null`.
+     *
+     *     validations.add(path(User::pet, Pet::name), "is not rex") { name ->
+     *         if (name == "rex") throw BasicValidationError("is rex")
+     *     }
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [validations]).
+     */
+    public fun <T> add(
+        path: PropertyPath<M, T>,
+        readable: String,
+        at: List<String> = path.names,
+        custom: (T) -> Unit,
+    ) {
+        add("${at.joinToString(".")}: $readable") { model ->
+            val resolved = path.resolve(model) ?: return@add
+            try {
+                custom(resolved.value)
             } catch (error: ValidationError) {
                 throw error.prefixed(at)
             }

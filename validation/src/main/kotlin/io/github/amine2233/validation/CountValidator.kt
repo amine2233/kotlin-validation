@@ -2,22 +2,29 @@ package io.github.amine2233.validation
 
 /**
  * Validates that the data's count (user-perceived characters for text, elements otherwise) is within [range].
+ * Deprecated: use [Validator.Companion.length], [Validator.Companion.size], [Validator.Companion.mapSize] or
+ * [Validator.Companion.arraySize], which reject a wrong property type at compile time.
  *
- *     validations.add(User::name, Validator.count(5..10))
- *     validations.add(User::name, Validator.count(5..<10))
+ *     validations.add(User::name, Validator.length(5..10))
+ *     validations.add(User::name, Validator.length(5..<10))
  *
  * @throws IllegalArgumentException if [range] is empty or has a negative bound.
  */
+@Suppress("DEPRECATION")
+@Deprecated(message = "Use Validator.length, Validator.size, Validator.mapSize or Validator.arraySize", level = DeprecationLevel.WARNING)
 public fun Validator.Companion.count(range: IntRange): Validator<Any?> = count(min = range.first, max = range.last)
 
 /**
  * Validates that the data's count is at least [min] and at most [max] (both inclusive, both optional).
+ * Deprecated: use [Validator.Companion.length], [Validator.Companion.size], [Validator.Companion.mapSize] or
+ * [Validator.Companion.arraySize], which reject a wrong property type at compile time.
  *
- *     validations.add(User::name, Validator.count(min = 5))
- *     validations.add(User::tags, Validator.count(max = 10))
+ *     validations.add(User::name, Validator.length(min = 5))
+ *     validations.add(User::tags, Validator.size(max = 10))
  *
  * @throws IllegalArgumentException if [min] or [max] is negative, or [min] is greater than [max].
  */
+@Deprecated(message = "Use Validator.length, Validator.size, Validator.mapSize or Validator.arraySize", level = DeprecationLevel.WARNING)
 public fun Validator.Companion.count(
     min: Int? = null,
     max: Int? = null,
