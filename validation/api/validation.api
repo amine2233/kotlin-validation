@@ -18,10 +18,16 @@ public final class io/github/amine2233/validation/AsyncValidatableKt {
 
 public final class io/github/amine2233/validation/AsyncValidations {
 	public fun <init> ()V
+	public final fun add (Lio/github/amine2233/validation/PropertyPath;Lio/github/amine2233/validation/AsyncValidator;Ljava/util/List;)V
+	public final fun add (Lio/github/amine2233/validation/PropertyPath;Lio/github/amine2233/validation/Validator;Ljava/util/List;)V
+	public final fun add (Lio/github/amine2233/validation/PropertyPath;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function2;)V
 	public final fun add (Ljava/lang/String;Lkotlin/jvm/functions/Function2;)V
 	public final fun add (Lkotlin/reflect/KProperty1;Lio/github/amine2233/validation/AsyncValidator;Ljava/util/List;)V
 	public final fun add (Lkotlin/reflect/KProperty1;Lio/github/amine2233/validation/Validator;Ljava/util/List;)V
 	public final fun add (Lkotlin/reflect/KProperty1;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function2;)V
+	public static synthetic fun add$default (Lio/github/amine2233/validation/AsyncValidations;Lio/github/amine2233/validation/PropertyPath;Lio/github/amine2233/validation/AsyncValidator;Ljava/util/List;ILjava/lang/Object;)V
+	public static synthetic fun add$default (Lio/github/amine2233/validation/AsyncValidations;Lio/github/amine2233/validation/PropertyPath;Lio/github/amine2233/validation/Validator;Ljava/util/List;ILjava/lang/Object;)V
+	public static synthetic fun add$default (Lio/github/amine2233/validation/AsyncValidations;Lio/github/amine2233/validation/PropertyPath;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)V
 	public static synthetic fun add$default (Lio/github/amine2233/validation/AsyncValidations;Lkotlin/reflect/KProperty1;Lio/github/amine2233/validation/AsyncValidator;Ljava/util/List;ILjava/lang/Object;)V
 	public static synthetic fun add$default (Lio/github/amine2233/validation/AsyncValidations;Lkotlin/reflect/KProperty1;Lio/github/amine2233/validation/Validator;Ljava/util/List;ILjava/lang/Object;)V
 	public static synthetic fun add$default (Lio/github/amine2233/validation/AsyncValidations;Lkotlin/reflect/KProperty1;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)V
@@ -120,8 +126,31 @@ public final class io/github/amine2233/validation/InValidatorKt {
 	public static final fun oneOf (Lio/github/amine2233/validation/Validator$Companion;[Ljava/lang/Object;)Lio/github/amine2233/validation/Validator;
 }
 
+public final class io/github/amine2233/validation/LengthValidatorKt {
+	public static final fun arraySize (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/github/amine2233/validation/Validator;
+	public static final fun arraySize (Lio/github/amine2233/validation/Validator$Companion;Lkotlin/ranges/IntRange;)Lio/github/amine2233/validation/Validator;
+	public static synthetic fun arraySize$default (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/github/amine2233/validation/Validator;
+	public static final fun length (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/github/amine2233/validation/Validator;
+	public static final fun length (Lio/github/amine2233/validation/Validator$Companion;Lkotlin/ranges/IntRange;)Lio/github/amine2233/validation/Validator;
+	public static synthetic fun length$default (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/github/amine2233/validation/Validator;
+	public static final fun mapSize (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/github/amine2233/validation/Validator;
+	public static final fun mapSize (Lio/github/amine2233/validation/Validator$Companion;Lkotlin/ranges/IntRange;)Lio/github/amine2233/validation/Validator;
+	public static synthetic fun mapSize$default (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/github/amine2233/validation/Validator;
+	public static final fun size (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/github/amine2233/validation/Validator;
+	public static final fun size (Lio/github/amine2233/validation/Validator$Companion;Lkotlin/ranges/IntRange;)Lio/github/amine2233/validation/Validator;
+	public static synthetic fun size$default (Lio/github/amine2233/validation/Validator$Companion;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/github/amine2233/validation/Validator;
+}
+
 public final class io/github/amine2233/validation/NilValidatorKt {
 	public static final fun getNil (Lio/github/amine2233/validation/Validator$Companion;)Lio/github/amine2233/validation/Validator;
+}
+
+public final class io/github/amine2233/validation/PropertyPath {
+	public final fun getNames ()Ljava/util/List;
+}
+
+public final class io/github/amine2233/validation/PropertyPathKt {
+	public static final fun path (Lkotlin/reflect/KProperty1;Lkotlin/reflect/KProperty1;)Lio/github/amine2233/validation/PropertyPath;
 }
 
 public final class io/github/amine2233/validation/RangeValidatorKt {
@@ -171,9 +200,13 @@ public abstract class io/github/amine2233/validation/ValidationError : java/lang
 
 public final class io/github/amine2233/validation/Validations {
 	public fun <init> ()V
+	public final fun add (Lio/github/amine2233/validation/PropertyPath;Lio/github/amine2233/validation/Validator;Ljava/util/List;)V
+	public final fun add (Lio/github/amine2233/validation/PropertyPath;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function1;)V
 	public final fun add (Ljava/lang/String;Lkotlin/jvm/functions/Function1;)V
 	public final fun add (Lkotlin/reflect/KProperty1;Lio/github/amine2233/validation/Validator;Ljava/util/List;)V
 	public final fun add (Lkotlin/reflect/KProperty1;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function1;)V
+	public static synthetic fun add$default (Lio/github/amine2233/validation/Validations;Lio/github/amine2233/validation/PropertyPath;Lio/github/amine2233/validation/Validator;Ljava/util/List;ILjava/lang/Object;)V
+	public static synthetic fun add$default (Lio/github/amine2233/validation/Validations;Lio/github/amine2233/validation/PropertyPath;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
 	public static synthetic fun add$default (Lio/github/amine2233/validation/Validations;Lkotlin/reflect/KProperty1;Lio/github/amine2233/validation/Validator;Ljava/util/List;ILjava/lang/Object;)V
 	public static synthetic fun add$default (Lio/github/amine2233/validation/Validations;Lkotlin/reflect/KProperty1;Ljava/lang/String;Ljava/util/List;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
 	public final fun freeze ()V
