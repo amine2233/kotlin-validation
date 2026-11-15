@@ -157,6 +157,54 @@ class ValidationTests {
     }
 
     @Test
+    fun rangeRejectsInvertedBounds() {
+        assertFailsWith<IllegalArgumentException> { Validator.range(10..1) }
+        val error = assertFailsWith<IllegalArgumentException> { Validator.range(min = 10, max = 1) }
+        assertEquals("min (10) must not be greater than max (1)", error.message)
+        assertFailsWith<IllegalArgumentException> { Validator.range(min = 2.0, max = 1.0) }
+    }
+
+    @Test
+    fun rangeAcceptsWellFormedBounds() {
+        Validator.range(5..5).validate(5)
+        Validator.range(min = 5, max = 5).validate(5)
+        Validator.range(min = 18)
+        Validator.range(max = 1.5)
+        Validator.range<Int>()
+        Validator.range(-5..5)
+        Validator.range(min = -10, max = -1).validate(-5)
+    }
+
+    @Test
+    fun countRejectsInvertedBounds() {
+        assertFailsWith<IllegalArgumentException> { Validator.count(5..<5) }
+        assertFailsWith<IllegalArgumentException> { Validator.count(10..1) }
+        val error = assertFailsWith<IllegalArgumentException> { Validator.count(min = 10, max = 1) }
+        assertEquals("min (10) must not be greater than max (1)", error.message)
+    }
+
+    @Test
+    fun countRejectsNegativeBounds() {
+        val minError = assertFailsWith<IllegalArgumentException> { Validator.count(min = -1) }
+        assertEquals("min (-1) must not be negative", minError.message)
+        val maxError = assertFailsWith<IllegalArgumentException> { Validator.count(max = -1) }
+        assertEquals("max (-1) must not be negative", maxError.message)
+        assertFailsWith<IllegalArgumentException> { Validator.count(-1..3) }
+    }
+
+    @Test
+    fun countAcceptsWellFormedBounds() {
+        Validator.count(3..3).validate("abc")
+        Validator.count(min = 3, max = 3).validate("abc")
+        Validator.count(min = 5)
+        Validator.count(max = 10)
+        Validator.count()
+        Validator.count(max = 0).validate("")
+        Validator.count(min = 0).validate("")
+        Validator.count(0..0).validate(emptyList<Int>())
+    }
+
+    @Test
     fun url() {
         Validator.url.validate("https://www.somedomain.com/somepath.png")
         Validator.url.validate("https://www.somedomain.com/")
