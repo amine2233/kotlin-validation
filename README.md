@@ -191,10 +191,39 @@ AsyncValidator<String>("not already registered") { email ->
 }
 ```
 
-There are no *built-in* async validators — an async rule is by definition a call to your own API.
+Apart from `AsyncValidator.valid()` below, there are no *built-in* async validators — an async rule
+is by definition a call to your own API.
 Put a built-in next to one with `Validator.email.async()`, and use `and` / `or` / `!` /
 `ignoringNull()` exactly as in the sync world. A custom closure added to `asyncValidations { }`
 runs in the async phase even when its body never suspends.
+
+#### Nested async models and reusable async validators
+
+`AsyncValidator.valid()` is the async counterpart of `Validator.valid()`: a nested
+`AsyncValidatable` runs its own sync and async rules, and every failure is prefixed with the
+property name. It is itself an async rule, so it runs in the parent's async phase, only after all
+of the parent's sync rules have passed. `null` is skipped.
+
+```kotlin
+data class Order(val buyer: SignUpRequest?) : AsyncValidatable<Order> {
+    override fun validations() = asyncValidations<Order> { add(Order::buyer, AsyncValidator.valid()) }
+}
+
+order.validate()   // "buyer.email is already registered"
+```
+
+Implement `AsyncValidatorType` to define a reusable async validator as an `object`, the same idiom
+as `ValidatorType`:
+
+```kotlin
+object IsAvailable : AsyncValidatorType<String> {
+    override val validatorReadable = "available"
+    override suspend fun validate(data: String) {
+        if (accountApi.isRegistered(data)) throw BasicValidationError("is already registered")
+    }
+}
+add(SignUpRequest::email, IsAvailable.validator())
+```
 
 ## Built-in validators
 
@@ -211,6 +240,7 @@ runs in the async phase even when its body never suspends.
 | `Validator.oneOf(values)` | any | Value is one of the supplied values |
 | `Validator.nil` | any | Value is `null` |
 | `Validator.valid()` | `Validatable` | Nested model passes its own validations |
+| `AsyncValidator.valid()` | `AsyncValidatable` | Nested model passes its own sync and async validations |
 
 Combinators: `a and b` (both run, both failures reported), `a or b`, `!a`, `a.ignoringNull()`.
 `CharacterSet.alphanumerics + CharacterSet.of("_-")` unions sets; `alphanumerics` follows Foundation

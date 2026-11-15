@@ -43,9 +43,9 @@ blocks using the library; each item is a deliberate simplification of the first 
     the sync phase usually short-circuits it). Several independent remote checks would be faster
     with `coroutineScope` + `awaitAll` — but that needs `kotlinx-coroutines-core` at runtime, so it
     belongs in a separate `validation-coroutines` module, the same containment used for item 4.
-12. **`AsyncValidator.valid()`** for a nested `AsyncValidatable`, the async counterpart of
-    `ValidValidator.kt`, plus an `AsyncValidatorType` if the `object`-implements-an-interface idiom
-    is wanted for async as it is for sync.
+12. **Done: nested async models.** The async `valid()` factory (`AsyncValidValidator.kt`) runs a
+    nested `AsyncValidatable`'s sync and async rules under the property path, and
+    `AsyncValidatorType` + `validator()` mirror `ValidatorType` for async.
 
 ## Build & tooling
 
