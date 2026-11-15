@@ -440,7 +440,7 @@ class ValidationTests {
 
     @Test
     fun detailOmitsOwnPathOnCompositeErrors() {
-        val andError = assertFailsWith<ValidationError> { (Validator.count(min = 5) and Validator.alphanumeric).validate("a!") }
+        val andError = assertFailsWith<ValidationError> { (Validator.length(min = 5) and Validator.alphanumeric).validate("a!") }
         val andDetail = "is less than required minimum of 5 characters and contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)"
         assertEquals(andDetail, andError.detail)
         val prefixedAnd = andError.prefixed(listOf("name"))
