@@ -20,8 +20,8 @@ description = "Compile everything and run all checks."
 run = "./gradlew build --no-daemon"
 
 [tasks.test]
-description = "Run the unit tests and check the public API against validation/api/validation.api."
-run = "./gradlew test :validation:apiCheck --no-daemon"
+description = "Run the unit tests and check the public API against validation/api/validation.api, validation-ktor/api/validation-ktor.api and validation-forms/api/validation-forms.api."
+run = "./gradlew test :validation:apiCheck :validation-ktor:apiCheck :validation-forms:apiCheck --no-daemon"
 
 [tasks.test-coverage]
 description = "Run the unit tests with a Kover coverage report (requires the org.jetbrains.kotlinx.kover plugin)."
@@ -97,5 +97,5 @@ description = "Assemble the Android sample (debug APK)."
 run = "./gradlew :samples:android:assembleDebug"
 
 [tasks.publish_local]
-description = "Publish the library to ~/.m2 so other projects can depend on it."
-run = "./gradlew :validation:publishToMavenLocal"
+description = "Publish the libraries (validation, validation-ktor, validation-forms) to ~/.m2 so other projects can depend on them."
+run = "./gradlew :validation:publishToMavenLocal :validation-ktor:publishToMavenLocal :validation-forms:publishToMavenLocal"
