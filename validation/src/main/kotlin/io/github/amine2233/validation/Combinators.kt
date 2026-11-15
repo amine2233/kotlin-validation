@@ -51,6 +51,8 @@ internal class AndValidatorError(
 ) : ValidationError(path) {
     override val reason: String get() = flatten().joinToString(" and ") { it.reason }
 
+    override val detail: String get() = listOfNotNull(left, right).joinToString(" and ") { it.relativeDetail() }
+
     override fun prefixed(path: List<String>): ValidationError = AndValidatorError(left, right, path + this.path)
 
     override fun flatten(): List<ValidationError> = listOfNotNull(left, right).flatMap { it.prefixed(path).flatten() }
@@ -62,6 +64,8 @@ internal class OrValidatorError(
     path: List<String> = emptyList(),
 ) : ValidationError(path) {
     override val reason: String get() = "${left.prefixed(path).reason} and ${right.prefixed(path).reason}"
+
+    override val detail: String get() = "${left.relativeDetail()} and ${right.relativeDetail()}"
 
     override fun prefixed(path: List<String>): ValidationError = OrValidatorError(left, right, path + this.path)
 }

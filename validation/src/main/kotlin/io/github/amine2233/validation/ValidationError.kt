@@ -16,6 +16,12 @@ public abstract class ValidationError(
     /** Human-readable description of the failure, including the key path. */
     public abstract val reason: String
 
+    /**
+     * Human-readable description of the failure without this error's own key path, meant to pair with [path]
+     * (for example on entries of [flatten]). Defaults to [reason].
+     */
+    public open val detail: String get() = reason
+
     /** A copy of this error whose path starts with [path]. */
     public abstract fun prefixed(path: List<String>): ValidationError
 
@@ -30,7 +36,7 @@ public abstract class ValidationError(
 
 /** The default [ValidationError]: a [detail] phrased to follow the key path, e.g. `"is not empty"`. */
 public class BasicValidationError(
-    public val detail: String,
+    override val detail: String,
     path: List<String> = emptyList(),
 ) : ValidationError(path) {
     override val reason: String get() = "${path.joinToString(".").ifEmpty { "data" }} $detail"
@@ -45,7 +51,12 @@ public class ValidateErrors(
 ) : ValidationError(path) {
     override val reason: String get() = errors.joinToString(", ") { it.prefixed(path).reason }
 
+    override val detail: String get() = errors.joinToString(", ") { it.relativeDetail() }
+
     override fun prefixed(path: List<String>): ValidateErrors = ValidateErrors(errors, path + this.path)
 
     override fun flatten(): List<ValidationError> = errors.flatMap { it.prefixed(path).flatten() }
 }
+
+/** The text of a child inside a composite's [ValidationError.detail]: keeps the child's relative path, if any. */
+internal fun ValidationError.relativeDetail(): String = if (path.isEmpty()) detail else reason
