@@ -341,6 +341,9 @@ CI and releases come from [kotlin-ci-shared](https://github.com/amine2233/kotlin
 All logic lives in `mise.toml`:
 
 - `mise run test` / `mise run lint` — what the `CI` workflow runs on pull requests.
+- `mise run test` also checks the library's public API against `validation/api/validation.api`
+  (binary-compatibility-validator). For an intentional API change, run
+  `./gradlew :validation:apiDump` and commit the updated `validation/api/validation.api`.
 - **Actions → Release → Run workflow** runs semantic-release (or automatically
   on every push to `main` when the repo variable `AUTO_RELEASE=true` is set): it tags
   `vX.Y.Z`, updates `CHANGELOG.md`, publishes `io.github.amine2233:validation` to GitHub
