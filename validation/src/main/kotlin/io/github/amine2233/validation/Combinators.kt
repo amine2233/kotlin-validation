@@ -4,7 +4,7 @@ package io.github.amine2233.validation
  * Combines two validators with AND logic, succeeding only if both succeed. Both are always run, so the
  * error lists every failure.
  *
- *     validations.add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+ *     validations.add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
  */
 public infix fun <T> Validator<T>.and(rhs: Validator<T>): Validator<T> =
     Validator("$readable and is ${rhs.readable}", ignoresNull && rhs.ignoresNull) { data ->

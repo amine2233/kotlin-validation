@@ -9,10 +9,10 @@ blocks using the library; each item is a deliberate simplification of the first 
    `String.codePoints()` (character sets). Replacing them with a small hand-written URL parser and
    code-point iteration would let the same artifact target iOS/JS/Wasm — and unify the Swift and
    Kotlin codebases into one KMP module.
-2. **Compile-time typing for `count` / `empty`.** They dispatch on the value's shape at runtime, so
-   `add(User::age, Validator.count(1..3))` compiles and fails with `IllegalArgumentException`. Typed
-   variants (`length` for `CharSequence?`, `count` for `Collection<*>?`) would move that to compile
-   time at the cost of diverging from the Swift names.
+2. **Done: compile-time typing for `count`.** `length` (`CharSequence?`), `size` (`Collection<*>?`),
+   `mapSize` (`Map<*, *>?`) and `arraySize` (`Array<*>?`) replace `count`, which is now deprecated, so
+   `add(User::age, Validator.length(1..3))` no longer compiles. `Validator.empty` still dispatches on
+   the value's shape at runtime.
 3. **Done.** `ValidationError.detail` now gives the path-less message on every error.
    **Message without path on every leaf.** `flatten()` gives one error per failing rule with its
    full `path`, but only `BasicValidationError` exposes the path-less `detail`; an `or` failure only

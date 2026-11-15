@@ -8,7 +8,7 @@ data class Pet(
 ) : Validatable<Pet> {
     override fun validations() =
         validations<Pet> {
-            add(Pet::name, Validator.count(min = 2) and Validator.alphanumeric)
+            add(Pet::name, Validator.length(min = 2) and Validator.alphanumeric)
             add(Pet::age, Validator.range(min = 0))
         }
 }
@@ -28,7 +28,7 @@ data class User(
     companion object {
         val validations =
             validations<User> {
-                add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+                add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
                 add(User::age, Validator.range(min = 18))
                 add(User::email, Validator.nil or Validator.email)
                 add(User::luckyNumber, Validator.nil or Validator.oneOf(5, 7))

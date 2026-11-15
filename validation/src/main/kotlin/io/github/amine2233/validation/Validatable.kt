@@ -5,7 +5,7 @@ package io.github.amine2233.validation
  *
  *     data class User(val name: String, val age: Int) : Validatable<User> {
  *         override fun validations() = validations<User> {
- *             add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+ *             add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
  *             add(User::age, Validator.range(min = 18))
  *         }
  *     }

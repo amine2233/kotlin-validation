@@ -6,7 +6,7 @@ import kotlin.reflect.KProperty1
  * A nested property of [M] whose value is a [T], built with [path]. Pass it to `add` to validate a nested
  * field with a single rule; failures are reported under [names] joined with dots.
  *
- *     validations.add(path(User::pet, Pet::name), Validator.count(min = 5))   // "pet.name is less than ..."
+ *     validations.add(path(User::pet, Pet::name), Validator.length(min = 5))   // "pet.name is less than ..."
  */
 public class PropertyPath<M, out T> internal constructor(
     /** The property names, outermost first. */
@@ -25,7 +25,7 @@ public class PropertyPath<M, out T> internal constructor(
  * Joins [outer] and [inner] into one [PropertyPath]. When [outer] is `null` the rule is skipped and passes;
  * the inner value is passed through as it is, `null` included.
  *
- *     validations.add(path(User::pet, Pet::name), Validator.count(min = 5))   // "pet.name is less than ..."
+ *     validations.add(path(User::pet, Pet::name), Validator.length(min = 5))   // "pet.name is less than ..."
  */
 public fun <M, O : Any, T> path(
     outer: KProperty1<M, O?>,

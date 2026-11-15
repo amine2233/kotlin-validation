@@ -7,7 +7,7 @@ import kotlin.reflect.KProperty1
  * failure at once as a single [ValidateErrors].
  *
  *     val validations = validations<User> {
- *         add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+ *         add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
  *         add(User::age, Validator.range(min = 18))
  *         add(User::email, Validator.nil or Validator.email)
  *     }
@@ -35,7 +35,7 @@ public class Validations<M> {
     /**
      * Adds [validator] for [property]. Failures are reported at [at], which defaults to the property name.
      *
-     *     validations.add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+     *     validations.add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
      *     validations.add(User::name, Validator.alphanumeric, at = listOf("first_name"))
      *
      * @throws IllegalStateException if this instance is frozen (returned by [validations]).
@@ -74,7 +74,7 @@ public class Validations<M> {
      * Adds [validator] for the nested property at [path]. Failures are reported at [at], which defaults to the
      * dotted path. The rule is skipped when the outer value is `null`.
      *
-     *     validations.add(path(User::pet, Pet::name), Validator.count(min = 5))
+     *     validations.add(path(User::pet, Pet::name), Validator.length(min = 5))
      *
      * @throws IllegalStateException if this instance is frozen (returned by [validations]).
      */

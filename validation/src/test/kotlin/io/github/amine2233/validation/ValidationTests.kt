@@ -122,6 +122,7 @@ class ValidationTests {
         assertFailsWith<ValidationError> { Validator.range(-5..<6).validate(6) }
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countCharacters() {
         val validator = Validator.count(1..6)
@@ -134,6 +135,7 @@ class ValidationTests {
         assertEquals("data is greater than required maximum of 6 characters", tooLong.reason)
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countItems() {
         val validator = Validator.count(1..6)
@@ -148,6 +150,7 @@ class ValidationTests {
         assertEquals("of length at least 5", Validator.count(min = 5).readable)
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countUsesUserPerceivedCharacters() {
         Validator.count(max = 1).validate("🤠")
@@ -175,6 +178,7 @@ class ValidationTests {
         Validator.range(min = -10, max = -1).validate(-5)
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countRejectsInvertedBounds() {
         assertFailsWith<IllegalArgumentException> { Validator.count(5..<5) }
@@ -183,6 +187,7 @@ class ValidationTests {
         assertEquals("min (10) must not be greater than max (1)", error.message)
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countRejectsNegativeBounds() {
         val minError = assertFailsWith<IllegalArgumentException> { Validator.count(min = -1) }
@@ -192,6 +197,7 @@ class ValidationTests {
         assertFailsWith<IllegalArgumentException> { Validator.count(-1..3) }
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countAcceptsWellFormedBounds() {
         Validator.count(3..3).validate("abc")
@@ -202,6 +208,129 @@ class ValidationTests {
         Validator.count(max = 0).validate("")
         Validator.count(min = 0).validate("")
         Validator.count(0..0).validate(emptyList<Int>())
+    }
+
+    @Test
+    fun lengthCountsCharacters() {
+        val validator = Validator.length(1..6)
+        validator.validate("1")
+        validator.validate("123456")
+        validator.validate(null)
+        val tooShort = assertFailsWith<ValidationError> { validator.validate("") }
+        assertEquals("data is less than required minimum of 1 character", tooShort.reason)
+        val tooLong = assertFailsWith<ValidationError> { validator.validate("1234567") }
+        assertEquals("data is greater than required maximum of 6 characters", tooLong.reason)
+        assertEquals("of length between 1 and 6", validator.readable)
+        assertEquals("of length at least 5", Validator.length(min = 5).readable)
+        assertEquals("of length at most 5", Validator.length(max = 5).readable)
+        assertEquals("valid", Validator.length().readable)
+    }
+
+    @Test
+    fun lengthUsesUserPerceivedCharacters() {
+        Validator.length(max = 1).validate("🤠")
+        Validator.length(max = 1).validate("e\u0301")
+        Validator.length(min = 1).validate("🤠")
+        Validator.length(min = 1).validate("e\u0301")
+        val error = assertFailsWith<ValidationError> { Validator.length(max = 1).validate("ab") }
+        assertEquals("data is greater than required maximum of 1 character", error.reason)
+    }
+
+    @Test
+    fun lengthRejectsMalformedBounds() {
+        assertEquals("min (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.length(min = -1) }.message)
+        assertEquals("max (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.length(max = -1) }.message)
+        assertEquals(
+            "min (10) must not be greater than max (1)",
+            assertFailsWith<IllegalArgumentException> { Validator.length(min = 10, max = 1) }.message,
+        )
+        assertEquals(
+            "min (5) must not be greater than max (4)",
+            assertFailsWith<IllegalArgumentException> { Validator.length(5..<5) }.message,
+        )
+    }
+
+    @Test
+    fun sizeCountsItems() {
+        val validator = Validator.size(1..6)
+        validator.validate(listOf(1))
+        validator.validate(setOf(1, 2, 3, 4, 5, 6))
+        validator.validate(null)
+        val tooShort = assertFailsWith<ValidationError> { validator.validate(emptyList<Int>()) }
+        assertEquals("data is less than required minimum of 1 item", tooShort.reason)
+        val tooLong = assertFailsWith<ValidationError> { validator.validate(listOf(1, 2, 3, 4, 5, 6, 7)) }
+        assertEquals("data is greater than required maximum of 6 items", tooLong.reason)
+        assertEquals("of length between 1 and 6", validator.readable)
+    }
+
+    @Test
+    fun sizeRejectsMalformedBounds() {
+        assertEquals("min (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.size(min = -1) }.message)
+        assertEquals("max (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.size(max = -1) }.message)
+        assertEquals(
+            "min (10) must not be greater than max (1)",
+            assertFailsWith<IllegalArgumentException> { Validator.size(min = 10, max = 1) }.message,
+        )
+        assertEquals(
+            "min (5) must not be greater than max (4)",
+            assertFailsWith<IllegalArgumentException> { Validator.size(5..<5) }.message,
+        )
+    }
+
+    @Test
+    fun mapSizeCountsEntries() {
+        val validator = Validator.mapSize(min = 1, max = 2)
+        validator.validate(mapOf("a" to 1))
+        validator.validate(mapOf("a" to 1, "b" to 2))
+        validator.validate(null)
+        val tooShort = assertFailsWith<ValidationError> { validator.validate(emptyMap<String, Int>()) }
+        assertEquals("data is less than required minimum of 1 item", tooShort.reason)
+        val tooLong = assertFailsWith<ValidationError> { validator.validate(mapOf("a" to 1, "b" to 2, "c" to 3)) }
+        assertEquals("data is greater than required maximum of 2 items", tooLong.reason)
+        assertEquals("of length between 1 and 2", validator.readable)
+    }
+
+    @Test
+    fun mapSizeRejectsMalformedBounds() {
+        assertEquals("min (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.mapSize(min = -1) }.message)
+        assertEquals("max (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.mapSize(max = -1) }.message)
+        assertEquals(
+            "min (10) must not be greater than max (1)",
+            assertFailsWith<IllegalArgumentException> { Validator.mapSize(min = 10, max = 1) }.message,
+        )
+        assertEquals(
+            "min (5) must not be greater than max (4)",
+            assertFailsWith<IllegalArgumentException> { Validator.mapSize(5..<5) }.message,
+        )
+    }
+
+    @Test
+    fun arraySizeCountsElements() {
+        val validator = Validator.arraySize(2..3)
+        validator.validate(arrayOf(1, 2))
+        validator.validate(arrayOf("a", "b", "c"))
+        validator.validate(null)
+        val tooShort = assertFailsWith<ValidationError> { validator.validate(arrayOf(1)) }
+        assertEquals("data is less than required minimum of 2 items", tooShort.reason)
+        val tooLong = assertFailsWith<ValidationError> { validator.validate(arrayOf(1, 2, 3, 4)) }
+        assertEquals("data is greater than required maximum of 3 items", tooLong.reason)
+        assertEquals("of length between 2 and 3", validator.readable)
+        val single = assertFailsWith<ValidationError> { Validator.arraySize(max = 1).validate(arrayOf(1, 2)) }
+        assertEquals("data is greater than required maximum of 1 item", single.reason)
+    }
+
+    @Test
+    fun arraySizeRejectsMalformedBounds() {
+        assertEquals("min (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.arraySize(min = -1) }.message)
+        assertEquals("max (-1) must not be negative", assertFailsWith<IllegalArgumentException> { Validator.arraySize(max = -1) }.message)
+        assertEquals(
+            "min (10) must not be greater than max (1)",
+            assertFailsWith<IllegalArgumentException> { Validator.arraySize(min = 10, max = 1) }.message,
+        )
+        assertEquals(
+            "min (5) must not be greater than max (4)",
+            assertFailsWith<IllegalArgumentException> { Validator.arraySize(5..<5) }.message,
+        )
     }
 
     @Test
@@ -311,7 +440,7 @@ class ValidationTests {
 
     @Test
     fun detailOmitsOwnPathOnCompositeErrors() {
-        val andError = assertFailsWith<ValidationError> { (Validator.count(min = 5) and Validator.alphanumeric).validate("a!") }
+        val andError = assertFailsWith<ValidationError> { (Validator.length(min = 5) and Validator.alphanumeric).validate("a!") }
         val andDetail = "is less than required minimum of 5 characters and contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)"
         assertEquals(andDetail, andError.detail)
         val prefixedAnd = andError.prefixed(listOf("name"))
@@ -358,6 +487,7 @@ class ValidationTests {
         assertEquals("data contains an invalid character: 'b'", error.reason)
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun countHalfOpenRangeAndRootPath() {
         Validator.count(5..<10).validate("123456789")
@@ -379,7 +509,7 @@ class ValidationTests {
 
     @Test
     fun andReportsBothFailures() {
-        val validator = Validator.count(min = 5) and Validator.alphanumeric
+        val validator = Validator.length(min = 5) and Validator.alphanumeric
         assertEquals("of length at least 5 and is in character set (A-Z, a-z, 0-9)", validator.readable)
         val error = assertFailsWith<ValidationError> { validator.validate("a!") }
         assertEquals(
@@ -431,7 +561,7 @@ class ValidationTests {
         data class Toy(
             val name: String,
         ) : Validatable<Toy> {
-            override fun validations() = validations<Toy> { add(Toy::name, Validator.count(min = 3)) }
+            override fun validations() = validations<Toy> { add(Toy::name, Validator.length(min = 3)) }
         }
 
         data class Owner(
@@ -450,7 +580,7 @@ class ValidationTests {
         val ran = mutableListOf<String>()
         val validations =
             validations<Pet> {
-                add(Pet::name, Validator.count(min = 5))
+                add(Pet::name, Validator.length(min = 5))
                 add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
                 add("has a long name") { pet -> if (pet.name.length < 10) throw BasicValidationError("has a short name") }
             }
@@ -478,7 +608,7 @@ class ValidationTests {
     @Test
     fun directlyConstructedValidationsAcceptAdd() {
         val validations = Validations<Pet>()
-        validations.add(Pet::name, Validator.count(min = 5))
+        validations.add(Pet::name, Validator.length(min = 5))
         validations.add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
         validations.add("has a long name") { pet -> if (pet.name.length < 10) throw BasicValidationError("has a short name") }
         assertEquals("name: is of length at least 5\nage: is even\nhas a long name", validations.toString())
@@ -595,7 +725,7 @@ data class User(
 ) : Validatable<User> {
     override fun validations() =
         validations<User> {
-            add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
+            add(User::name, Validator.length(min = 5) and Validator.alphanumeric)
             add(User::age, Validator.range(min = 18))
             add(User::email, Validator.nil or Validator.email)
             add(User::email, Validator.email or Validator.nil)
@@ -612,7 +742,7 @@ data class Pet(
 ) : Validatable<Pet> {
     override fun validations() =
         validations<Pet> {
-            add(Pet::name, Validator.count(min = 5) and Validator.characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces))
+            add(Pet::name, Validator.length(min = 5) and Validator.characterSet(CharacterSet.alphanumerics + CharacterSet.whitespaces))
             add(Pet::age, Validator.range(min = 3))
         }
 }

@@ -100,7 +100,7 @@ public class AsyncValidations<M> {
      * Adds a synchronous [validator] for the nested property at [path], run in the first phase. Failures are
      * reported at [at], which defaults to the dotted path. The rule is skipped when the outer value is `null`.
      *
-     *     validations.add(path(SignUpRequest::address, Address::zip), Validator.count(min = 5))
+     *     validations.add(path(SignUpRequest::address, Address::zip), Validator.length(min = 5))
      *
      * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
      */
