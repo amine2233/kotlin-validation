@@ -80,6 +80,9 @@ try {
 }
 ```
 
+Validation errors carry no stack trace and accept no suppressed exceptions, because they are thrown as
+control flow (for example on every keystroke in a form). Use `path`, `reason` and `flatten()` to find a failure.
+
 Validators are plain values and can be used on their own:
 
 ```kotlin
