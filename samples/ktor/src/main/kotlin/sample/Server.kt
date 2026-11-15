@@ -1,13 +1,17 @@
 package sample
 
 import io.github.amine2233.validation.*
+import io.github.amine2233.validation.ktor.asyncValidatable
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.plugins.requestvalidation.RequestValidation
+import io.ktor.server.plugins.requestvalidation.RequestValidationException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -42,34 +46,27 @@ data class SignUpRequest(
 }
 
 @Serializable
-data class FieldError(
-    val path: String,
-    val reason: String,
-)
-
-@Serializable
 data class ErrorResponse(
     val error: String,
-    val errors: List<FieldError>,
-)
-
-fun ValidationError.toResponse() =
-    ErrorResponse(
-        error = reason,
-        errors = flatten().map { FieldError(it.path.joinToString("."), it.reason) },
-    )
+    val errors: List<String>,
+) {
+    constructor(errors: List<String>) : this(errors.joinToString(", "), errors)
+}
 
 fun Application.module() {
     install(ContentNegotiation) { json() }
+    install(RequestValidation) { asyncValidatable<SignUpRequest>() }
     install(StatusPages) {
-        exception<ValidationError> { call, error ->
-            call.respond(HttpStatusCode.BadRequest, error.toResponse())
+        exception<RequestValidationException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.reasons))
+        }
+        exception<BadRequestException> { call, _ ->
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(listOf("malformed request body")))
         }
     }
     routing {
         post("/signup") {
             val request = call.receive<SignUpRequest>()
-            request.validate()
             call.respond(HttpStatusCode.Created, request)
         }
     }

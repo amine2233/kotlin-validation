@@ -14,7 +14,7 @@ java {
 }
 
 dependencies {
-    implementation(project(":validation"))
+    implementation(project(":validation-ktor"))
     implementation(libs.bundles.ktor.server)
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlin.test)
