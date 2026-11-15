@@ -184,4 +184,46 @@ class AsyncValidationTests {
             }
         assertEquals("age: is at least 18\nemail: is not already registered", validations.toString())
     }
+
+    @Test
+    fun builtAsyncValidationsRejectEveryAdd() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val validations =
+                asyncValidations<Account> {
+                    add(Account::age, Validator.range(min = 18))
+                    add(Account::email, "is free") { calls += "is free" }
+                    add("has a known pair") { calls += "has a known pair" }
+                }
+            val before = validations.toString()
+
+            assertFailsWith<IllegalStateException> { validations.add(Account::email, Validator.email) }
+            assertEquals(before, validations.toString())
+            assertFailsWith<IllegalStateException> {
+                validations.add(Account::email, AsyncValidator<String?>("late") { calls += "async validator" })
+            }
+            assertEquals(before, validations.toString())
+            assertFailsWith<IllegalStateException> { validations.add(Account::email, "late") { calls += "property" } }
+            assertEquals(before, validations.toString())
+            assertFailsWith<IllegalStateException> { validations.add("late") { calls += "model" } }
+            assertEquals(before, validations.toString())
+
+            validations.run(Account("nope", 30))
+            assertEquals(listOf("is free", "has a known pair"), calls)
+            val error = assertFailsWith<ValidateErrors> { validations.run(Account("nope", 12)) }
+            assertEquals(listOf(listOf("age") to "age is less than 18"), error.flatten().map { it.path to it.reason })
+        }
+
+    @Test
+    fun directlyConstructedAsyncValidationsAcceptAdd() =
+        runBlocking {
+            val validations = AsyncValidations<Account>()
+            validations.add(Account::age, Validator.range(min = 18))
+            validations.add(Account::email, "is free") { throw BasicValidationError("is already registered") }
+            assertEquals("age: is at least 18\nemail: is free", validations.toString())
+            val syncError = assertFailsWith<ValidateErrors> { validations.run(Account("a@b.co", 12)) }
+            assertEquals("age is less than 18", syncError.reason)
+            val asyncError = assertFailsWith<ValidateErrors> { validations.run(Account("a@b.co", 30)) }
+            assertEquals("email is already registered", asyncError.reason)
+        }
 }

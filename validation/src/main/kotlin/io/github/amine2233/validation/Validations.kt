@@ -12,15 +12,33 @@ import kotlin.reflect.KProperty1
  *         add(User::email, Validator.nil or Validator.email)
  *     }
  *     validations.run(user)
+ *
+ * An instance returned by [validations] is frozen: its rules are fixed once the builder block returns, so it
+ * is safe to share across threads, and calling [add] on it throws [IllegalStateException]. An instance built
+ * with the constructor is never frozen; populate it fully before sharing it across threads, or use
+ * [validations] to get a frozen one.
  */
 public class Validations<M> {
     private val storage = mutableListOf<Validator<M>>()
+
+    @Volatile
+    private var frozen: List<Validator<M>>? = null
+
+    private val rules: List<Validator<M>>
+        get() = frozen ?: storage
+
+    @PublishedApi
+    internal fun freeze() {
+        frozen = storage.toList()
+    }
 
     /**
      * Adds [validator] for [property]. Failures are reported at [at], which defaults to the property name.
      *
      *     validations.add(User::name, Validator.count(min = 5) and Validator.alphanumeric)
      *     validations.add(User::name, Validator.alphanumeric, at = listOf("first_name"))
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [validations]).
      */
     public fun <T> add(
         property: KProperty1<M, T>,
@@ -34,6 +52,8 @@ public class Validations<M> {
      *     validations.add(User::name, "is vapor") { name ->
      *         if (name != "vapor") throw BasicValidationError("is not vapor")
      *     }
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [validations]).
      */
     public fun <T> add(
         property: KProperty1<M, T>,
@@ -56,18 +76,21 @@ public class Validations<M> {
      *     validations.add("passwords match") { model ->
      *         if (model.password != model.confirmation) throw BasicValidationError("has mismatching passwords")
      *     }
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [validations]).
      */
     public fun add(
         readable: String,
         custom: (M) -> Unit,
     ) {
+        check(frozen == null) { "Validations is frozen: add must be called inside the validations { } block" }
         storage += Validator(readable, closure = custom)
     }
 
     /** Runs every validator on [model], throwing [ValidateErrors] if at least one fails. */
     public fun run(model: M) {
         val errors =
-            storage.mapNotNull { validator ->
+            rules.mapNotNull { validator ->
                 try {
                     validator.validate(model)
                     null
@@ -78,8 +101,8 @@ public class Validations<M> {
         if (errors.isNotEmpty()) throw ValidateErrors(errors)
     }
 
-    override fun toString(): String = storage.joinToString("\n")
+    override fun toString(): String = rules.joinToString("\n")
 }
 
-/** Builds a [Validations] for [M]. */
-public inline fun <M> validations(build: Validations<M>.() -> Unit): Validations<M> = Validations<M>().apply(build)
+/** Builds a [Validations] for [M]. The returned instance is frozen: [Validations.add] on it throws [IllegalStateException]. */
+public inline fun <M> validations(build: Validations<M>.() -> Unit): Validations<M> = Validations<M>().apply(build).also { it.freeze() }

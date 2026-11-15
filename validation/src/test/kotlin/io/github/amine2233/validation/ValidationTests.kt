@@ -342,6 +342,50 @@ class ValidationTests {
         assertIs<ValidateErrors>(error)
         assertEquals("toy.name is less than required minimum of 3 characters", error.reason)
     }
+
+    @Test
+    fun builtValidationsRejectEveryAdd() {
+        val ran = mutableListOf<String>()
+        val validations =
+            validations<Pet> {
+                add(Pet::name, Validator.count(min = 5))
+                add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
+                add("has a long name") { pet -> if (pet.name.length < 10) throw BasicValidationError("has a short name") }
+            }
+        val before = validations.toString()
+
+        assertFailsWith<IllegalStateException> { validations.add(Pet::name, Validator.alphanumeric) }
+        assertEquals(before, validations.toString())
+        assertFailsWith<IllegalStateException> { validations.add(Pet::age, "late") { ran += "property" } }
+        assertEquals(before, validations.toString())
+        assertFailsWith<IllegalStateException> { validations.add("late") { ran += "model" } }
+        assertEquals(before, validations.toString())
+
+        val error = assertFailsWith<ValidateErrors> { validations.run(Pet(name = "Rex", age = 3)) }
+        assertEquals(
+            listOf(
+                listOf("name") to "name is less than required minimum of 5 characters",
+                listOf("age") to "age is odd",
+                emptyList<String>() to "data has a short name",
+            ),
+            error.flatten().map { it.path to it.reason },
+        )
+        assertEquals(emptyList(), ran)
+    }
+
+    @Test
+    fun directlyConstructedValidationsAcceptAdd() {
+        val validations = Validations<Pet>()
+        validations.add(Pet::name, Validator.count(min = 5))
+        validations.add(Pet::age, "is even") { age -> if (age % 2 != 0) throw BasicValidationError("is odd") }
+        validations.add("has a long name") { pet -> if (pet.name.length < 10) throw BasicValidationError("has a short name") }
+        assertEquals("name: is of length at least 5\nage: is even\nhas a long name", validations.toString())
+        val error = assertFailsWith<ValidateErrors> { validations.run(Pet(name = "Rex", age = 3)) }
+        assertEquals(
+            "name is less than required minimum of 5 characters, age is odd, data has a short name",
+            error.reason,
+        )
+    }
 }
 
 data class User(

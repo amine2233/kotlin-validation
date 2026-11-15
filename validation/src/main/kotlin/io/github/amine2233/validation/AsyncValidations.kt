@@ -15,27 +15,55 @@ import kotlin.reflect.KProperty1
  *         add(SignUpRequest::username, "is taken") { if (api.isTaken(it)) throw BasicValidationError("is taken") }
  *     }
  *     validations.run(request)
+ *
+ * An instance returned by [asyncValidations] is frozen: its sync and async rules are fixed once the builder
+ * block returns, so it is safe to share across threads, and calling [add] on it throws
+ * [IllegalStateException]. An instance built with the constructor is never frozen; populate it fully before
+ * sharing it across threads, or use [asyncValidations] to get a frozen one.
  */
 public class AsyncValidations<M> {
     private val sync = Validations<M>()
     private val storage = mutableListOf<AsyncValidator<M>>()
+
+    @Volatile
+    private var frozen: List<AsyncValidator<M>>? = null
+
+    private val rules: List<AsyncValidator<M>>
+        get() = frozen ?: storage
+
+    @PublishedApi
+    internal fun freeze() {
+        sync.freeze()
+        frozen = storage.toList()
+    }
+
+    private fun checkNotFrozen() {
+        check(frozen == null) { "AsyncValidations is frozen: add must be called inside the asyncValidations { } block" }
+    }
 
     /**
      * Adds a synchronous [validator] for [property], run in the first phase. Failures are reported at [at],
      * which defaults to the property name.
      *
      *     validations.add(SignUpRequest::email, Validator.email)
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
      */
     public fun <T> add(
         property: KProperty1<M, T>,
         validator: Validator<T>,
         at: List<String> = listOf(property.name),
-    ): Unit = sync.add(property, validator, at)
+    ) {
+        checkNotFrozen()
+        sync.add(property, validator, at)
+    }
 
     /**
      * Adds a suspending [validator] for [property], run in the second phase.
      *
      *     validations.add(SignUpRequest::email, emailIsAvailable)
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
      */
     public fun <T> add(
         property: KProperty1<M, T>,
@@ -50,6 +78,8 @@ public class AsyncValidations<M> {
      *     validations.add(SignUpRequest::email, "is not already registered") { email ->
      *         if (api.isRegistered(email)) throw BasicValidationError("is already registered")
      *     }
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
      */
     public fun <T> add(
         property: KProperty1<M, T>,
@@ -73,11 +103,14 @@ public class AsyncValidations<M> {
      *     validations.add("has an unused invite code") { model ->
      *         if (api.isSpent(model.inviteCode)) throw BasicValidationError("has a spent invite code")
      *     }
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
      */
     public fun add(
         readable: String,
         custom: suspend (M) -> Unit,
     ) {
+        checkNotFrozen()
         storage += AsyncValidator(readable, closure = custom)
     }
 
@@ -92,7 +125,7 @@ public class AsyncValidations<M> {
     public suspend fun run(model: M) {
         sync.run(model)
         val errors =
-            storage.mapNotNull { validator ->
+            rules.mapNotNull { validator ->
                 try {
                     validator.validate(model)
                     null
@@ -104,10 +137,11 @@ public class AsyncValidations<M> {
     }
 
     override fun toString(): String =
-        listOf(sync.toString(), storage.joinToString("\n"))
+        listOf(sync.toString(), rules.joinToString("\n"))
             .filter { it.isNotEmpty() }
             .joinToString("\n")
 }
 
-/** Builds an [AsyncValidations] for [M]. */
-public inline fun <M> asyncValidations(build: AsyncValidations<M>.() -> Unit): AsyncValidations<M> = AsyncValidations<M>().apply(build)
+/** Builds an [AsyncValidations] for [M]. The returned instance is frozen: [AsyncValidations.add] on it throws [IllegalStateException]. */
+public inline fun <M> asyncValidations(build: AsyncValidations<M>.() -> Unit): AsyncValidations<M> =
+    AsyncValidations<M>().apply(build).also { it.freeze() }
