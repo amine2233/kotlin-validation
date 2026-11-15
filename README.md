@@ -77,11 +77,13 @@ try {
 } catch (error: ValidateErrors) {
     println(error.reason)   // "name is less than required minimum of 5 characters, age is less than 18, pet.name ..."
     error.flatten()         // one ValidationError per failing rule, each with its full `path`
+    error.flatten().map { it.path to it.detail }  // [name] to "is less than required minimum of 5 characters", ...
 }
 ```
 
 Validation errors carry no stack trace and accept no suppressed exceptions, because they are thrown as
-control flow (for example on every keystroke in a form). Use `path`, `reason` and `flatten()` to find a failure.
+control flow (for example on every keystroke in a form). Use `path`, `reason`, `detail` (the
+message without the key path) and `flatten()` to find a failure.
 
 Validators are plain values and can be used on their own:
 
