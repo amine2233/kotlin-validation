@@ -39,6 +39,34 @@ private data class Account(
         }
 }
 
+private data class Parent(
+    val child: Account?,
+) : AsyncValidatable<Parent> {
+    override fun validations() = asyncValidations<Parent> { add(Parent::child, AsyncValidator.valid()) }
+}
+
+private data class Grandparent(
+    val parent: Parent,
+) : AsyncValidatable<Grandparent> {
+    override fun validations() = asyncValidations<Grandparent> { add(Grandparent::parent, AsyncValidator.valid()) }
+}
+
+private class Unreachable : AsyncValidatable<Unreachable> {
+    override fun validations() = asyncValidations<Unreachable> { add("is reachable") { throw IOException("connection reset") } }
+}
+
+private data class Holder(
+    val child: Unreachable?,
+)
+
+private object IsFree : AsyncValidatorType<String> {
+    override val validatorReadable = "free"
+
+    override suspend fun validate(data: String) {
+        if (data == "taken@vapor.codes") throw BasicValidationError("is already registered")
+    }
+}
+
 class AsyncValidationTests {
     @Test
     fun asyncFailureIsReportedWithItsPath() =
@@ -225,5 +253,86 @@ class AsyncValidationTests {
             assertEquals("age is less than 18", syncError.reason)
             val asyncError = assertFailsWith<ValidateErrors> { validations.run(Account("a@b.co", 30)) }
             assertEquals("email is already registered", asyncError.reason)
+        }
+
+    @Test
+    fun validNestedModelPasses() =
+        runBlocking {
+            val directory = Directory()
+            Parent(Account("free@vapor.codes", 30).apply { this.directory = directory }).validate()
+            assertEquals(listOf("free@vapor.codes"), directory.lookups)
+        }
+
+    @Test
+    fun nestedAsyncFailureIsPrefixedWithThePropertyPath() =
+        runBlocking {
+            val error = assertFailsWith<ValidateErrors> { Parent(Account("taken@vapor.codes", 30)).validate() }
+            assertEquals("child.email is already registered", error.reason)
+            assertEquals(
+                listOf(listOf("child", "email") to "child.email is already registered"),
+                error.flatten().map { it.path to it.reason },
+            )
+        }
+
+    @Test
+    fun nestedSyncFailureIsPrefixedAndSkipsTheLookup() =
+        runBlocking {
+            val directory = Directory()
+            val error = assertFailsWith<ValidateErrors> { Parent(Account("nope", 30).apply { this.directory = directory }).validate() }
+            assertEquals("child.email is not a valid email address", error.reason)
+            assertEquals(listOf(listOf("child", "email")), error.flatten().map { it.path })
+            assertEquals(emptyList(), directory.lookups)
+        }
+
+    @Test
+    fun nullNestedModelIsSkipped() =
+        runBlocking {
+            val directory = Directory()
+            Parent(null).validate()
+            assertEquals(emptyList(), directory.lookups)
+        }
+
+    @Test
+    fun nestedValidHonoursCustomPath() =
+        runBlocking {
+            val validations = asyncValidations<Parent> { add(Parent::child, AsyncValidator.valid(), at = listOf("other")) }
+            val error = assertFailsWith<ValidateErrors> { validations.run(Parent(Account("taken@vapor.codes", 30))) }
+            assertEquals("other.email is already registered", error.reason)
+            assertEquals(listOf(listOf("other", "email")), error.flatten().map { it.path })
+        }
+
+    @Test
+    fun twoLevelsOfNestingGiveTheFullPath() =
+        runBlocking {
+            val error = assertFailsWith<ValidateErrors> { Grandparent(Parent(Account("taken@vapor.codes", 30))).validate() }
+            assertEquals("parent.child.email is already registered", error.reason)
+            assertEquals(listOf(listOf("parent", "child", "email")), error.flatten().map { it.path })
+        }
+
+    @Test
+    fun nestedNetworkFailuresPropagate() {
+        val validations = asyncValidations<Holder> { add(Holder::child, AsyncValidator.valid()) }
+        assertFailsWith<IOException> { runBlocking { validations.run(Holder(Unreachable())) } }
+    }
+
+    @Test
+    fun asyncValidIsANullSkippingRuleNamedValid() {
+        val validator = AsyncValidator.valid<Account>()
+        assertEquals("valid", validator.readable)
+        assertTrue(validator.ignoresNull)
+    }
+
+    @Test
+    fun asyncValidatorTypeBecomesAnAsyncValidator() =
+        runBlocking {
+            val validator = IsFree.validator()
+            assertEquals(IsFree.validatorReadable, validator.readable)
+            validator.validate("free@vapor.codes")
+
+            val validations = asyncValidations<Account> { add(Account::email, IsFree.validator().ignoringNull()) }
+            validations.run(Account("free@vapor.codes", 30))
+            val error = assertFailsWith<ValidateErrors> { validations.run(Account("taken@vapor.codes", 30)) }
+            assertEquals("email is already registered", error.reason)
+            assertEquals(listOf(listOf("email")), error.flatten().map { it.path })
         }
 }
