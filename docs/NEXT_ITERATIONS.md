@@ -18,9 +18,9 @@ blocks using the library; each item is a deliberate simplification of the first 
    full `path`, but only `BasicValidationError` exposes the path-less `detail`; an `or` failure only
    has a combined `reason`. Adding `detail` to the base class would let APIs answer
    `{"path":"pet.name","message":"is less than ..."}` without string surgery.
-4. **Ktor `RequestValidation` integration.** Ktor's `RequestValidationConfig.validate { }` block is
-   itself `suspend`, so a tiny `validation-ktor` module can expose one helper for `Validatable` and
-   one for `AsyncValidatable` with no extra machinery, keeping the core dependency-free.
+4. **Done: Ktor `RequestValidation` integration.** The `validation-ktor` module ships
+   `validatable<M>()` and `asyncValidatable<M>()` for `install(RequestValidation) { }`, turning a
+   `ValidationError` into one reason per flattened failure while the core stays dependency-free.
 5. **Form helpers in the library.** `FieldRule` / `FieldValidation` / `evaluate` currently live in
    the Android sample (mirroring the Swift DocC article). Promoting them to a `validation-forms`
    module would remove copy-paste between Android and Compose Multiplatform apps.
@@ -64,4 +64,6 @@ blocks using the library; each item is a deliberate simplification of the first 
 
 16. **Android instrumentation/UI test** for the Compose form (`createComposeRule` or Robolectric) —
     the review caught a `rememberSaveable` crash that no unit test composes the screen to catch.
-17. **Ktor `RequestValidation` sample** once item 4 exists, and a malformed-JSON test case.
+17. **Done: Ktor `RequestValidation` sample.** `samples/ktor` now installs
+    `asyncValidatable<SignUpRequest>()`, maps `RequestValidationException` and malformed JSON to
+    `400`, and tests the malformed-JSON case.

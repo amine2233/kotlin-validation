@@ -4,7 +4,8 @@ A lightweight, declarative validation library for Kotlin models — a port of
 [amine2233/Validation](https://github.com/amine2233/Validation) (Swift, itself derived from
 Vapor's Validation). Plain JVM, no dependencies: works in a CLI, in a Ktor server and in an
 Android app. Rules that need a network call (`suspend`) are supported without pulling in a
-coroutines runtime.
+coroutines runtime. An optional `validation-ktor` module plugs models into Ktor's
+`RequestValidation`.
 
 Describe how a model's properties should be validated with composable validators, then call
 `validate()`. **All** failures are collected in one pass and reported with dotted key paths.
@@ -40,6 +41,9 @@ repositories {
 }
 dependencies { implementation("io.github.amine2233:validation:<version>") }
 ```
+
+For Ktor's `RequestValidation` plugin, add `implementation("io.github.amine2233:validation-ktor:<version>")`
+instead; it brings `validation` and `ktor-server-request-validation` with it (see [Ktor `RequestValidation`](#ktor-requestvalidation)).
 
 For local work, `mise run publish_local` puts a `0.1.0-SNAPSHOT` in `~/.m2` (`repositories { mavenLocal() }`).
 
@@ -283,25 +287,27 @@ request.validate() // throws ValidateErrors listing every field
 
 ## Ktor
 
-`samples/ktor` maps every `ValidationError` to a `400` with `StatusPages`, using `flatten()` for a
-per-field list next to the combined reason. Its `SignUpRequest` is an `AsyncValidatable`, so the
-"email already registered" rule runs in the route's existing coroutine — and an `IOException` from
-that lookup is deliberately *not* a `ValidationError`, so it surfaces as a 500 rather than telling
-the user their input is wrong:
+`samples/ktor` validates `SignUpRequest` with Ktor's `RequestValidation` plugin through
+`validation-ktor`, so the route only calls `call.receive`. `StatusPages` maps the resulting
+`RequestValidationException` to a `400`, listing one reason per failing rule next to the combined
+reason, and maps a malformed body (`BadRequestException`) to a `400` of the same shape.
+`SignUpRequest` is an `AsyncValidatable`, so the "email already registered" rule runs in the
+request's coroutine, and an `IOException` from that lookup is deliberately *not* a
+`ValidationError`, so it surfaces as a 500 rather than telling the user their input is wrong:
 
 ```kotlin
+install(RequestValidation) { asyncValidatable<SignUpRequest>() }
 install(StatusPages) {
-    exception<ValidationError> { call, error ->
-        call.respond(
-            HttpStatusCode.BadRequest,
-            ErrorResponse(error.reason, error.flatten().map { FieldError(it.path.joinToString("."), it.reason) }),
-        )
+    exception<RequestValidationException> { call, cause ->
+        call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.reasons))
+    }
+    exception<BadRequestException> { call, _ ->
+        call.respond(HttpStatusCode.BadRequest, ErrorResponse(listOf("malformed request body")))
     }
 }
 routing {
     post("/signup") {
         val request = call.receive<SignUpRequest>()
-        request.validate()
         call.respond(HttpStatusCode.Created, request)
     }
 }
@@ -311,12 +317,33 @@ routing {
 mise run ktor
 curl -X POST localhost:8080/signup -H 'content-type: application/json' -d '{"email":"nope","password":"short!","age":12}'
 # {"error":"email is not a valid email address, password is less than ..., age is less than 18",
-#  "errors":[{"path":"email","reason":"email is not a valid email address"}, {"path":"password","reason":"..."}, ...]}
+#  "errors":["email is not a valid email address","password is less than required minimum of 8 characters", ...]}
 
 curl -X POST localhost:8080/signup -H 'content-type: application/json' \
   -d '{"email":"taken@vapor.codes","password":"hunter2hunter2","age":30}'
-# {"error":"email is already registered","errors":[{"path":"email","reason":"email is already registered"}]}
+# {"error":"email is already registered","errors":["email is already registered"]}
+
+curl -X POST localhost:8080/signup -H 'content-type: application/json' -d '{"email":'
+# {"error":"malformed request body","errors":["malformed request body"]}
 ```
+
+### Ktor `RequestValidation`
+
+`io.github.amine2233:validation-ktor:<version>` registers models with Ktor's `RequestValidation`
+plugin:
+
+```kotlin
+install(RequestValidation) {
+    validatable<User>()                 // runs User's sync validations
+    asyncValidatable<SignUpRequest>()   // runs SignUpRequest's sync, then async validations
+}
+```
+
+`call.receive<T>()` then throws `RequestValidationException` when the model is invalid, with one
+reason per failing rule from `flatten()`, in rule order and including the key path
+(`"age is less than 18"`). Only a `ValidationError` becomes a `400`; any other exception (an
+`IOException` from an async rule, say) propagates as usual. The module ships no response type and
+no `StatusPages` wiring: map `RequestValidationException` yourself, as the sample does.
 
 ## Android
 
@@ -329,8 +356,9 @@ messages and a submit that runs the whole-model validation.
 
 ```
 validation/          the library (io.github.amine2233.validation)
+validation-ktor/     Ktor RequestValidation helpers (io.github.amine2233.validation.ktor)
 samples/cli/         plain main(): validates two users, prints reasons
-samples/ktor/        POST /signup with StatusPages error mapping + testApplication tests
+samples/ktor/        POST /signup with RequestValidation + StatusPages error mapping + testApplication tests
 samples/android/     Compose form using shared rules (included only when ANDROID_HOME points to an SDK)
 docs/NEXT_ITERATIONS.md   known gaps and candidate improvements
 ```
@@ -341,13 +369,14 @@ CI and releases come from [kotlin-ci-shared](https://github.com/amine2233/kotlin
 All logic lives in `mise.toml`:
 
 - `mise run test` / `mise run lint` — what the `CI` workflow runs on pull requests.
-- `mise run test` also checks the library's public API against `validation/api/validation.api`
-  (binary-compatibility-validator). For an intentional API change, run
-  `./gradlew :validation:apiDump` and commit the updated `validation/api/validation.api`.
+- `mise run test` also checks the libraries' public API against `validation/api/validation.api`
+  and `validation-ktor/api/validation-ktor.api` (binary-compatibility-validator). For an
+  intentional API change, run `./gradlew apiDump` and commit the updated `.api` files.
 - **Actions → Release → Run workflow** runs semantic-release (or automatically
   on every push to `main` when the repo variable `AUTO_RELEASE=true` is set): it tags
-  `vX.Y.Z`, updates `CHANGELOG.md`, publishes `io.github.amine2233:validation` to GitHub
-  Packages and creates the GitHub release with the jars attached.
+  `vX.Y.Z`, updates `CHANGELOG.md`, publishes `io.github.amine2233:validation` and
+  `io.github.amine2233:validation-ktor` to GitHub Packages and creates the GitHub release
+  with the jars attached.
 - `mise run release --dry-run` previews the next version locally.
 
 ## License
