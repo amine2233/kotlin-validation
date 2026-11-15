@@ -5,4 +5,4 @@ set -euo pipefail
 
 mise trust --yes --quiet . >/dev/null 2>&1 || true
 mise exec -- ktlint '**/*.kt' '**/*.kts' '!**/build/**' --reporter=plain
-mise exec -- ./gradlew test --no-daemon --console=plain
+mise exec -- ./gradlew test apiCheck --no-daemon --console=plain
