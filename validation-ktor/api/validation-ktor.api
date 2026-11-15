@@ -1,0 +1,4 @@
+public final class io/github/amine2233/validation/ktor/RequestValidationKt {
+	public static final fun validationResult (Lkotlin/jvm/functions/Function0;)Lio/ktor/server/plugins/requestvalidation/ValidationResult;
+}
+

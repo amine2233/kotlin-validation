@@ -41,15 +41,15 @@ class ServerTest {
                 ErrorResponse(
                     error =
                         "email is not a valid email address, " +
-                            "password is less than required minimum of 8 characters and " +
+                            "password is less than required minimum of 8 characters, " +
                             "password contains an invalid character: '!' (allowed: A-Z, a-z, 0-9), " +
                             "age is less than 18",
                     errors =
                         listOf(
-                            FieldError("email", "email is not a valid email address"),
-                            FieldError("password", "password is less than required minimum of 8 characters"),
-                            FieldError("password", "password contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)"),
-                            FieldError("age", "age is less than 18"),
+                            "email is not a valid email address",
+                            "password is less than required minimum of 8 characters",
+                            "password contains an invalid character: '!' (allowed: A-Z, a-z, 0-9)",
+                            "age is less than 18",
                         ),
                 ),
                 response.body(),
@@ -70,9 +70,23 @@ class ServerTest {
             assertEquals(
                 ErrorResponse(
                     error = "email is already registered",
-                    errors = listOf(FieldError("email", "email is already registered")),
+                    errors = listOf("email is already registered"),
                 ),
                 response.body(),
             )
+        }
+
+    @Test
+    fun malformedJsonIsBadRequest() =
+        testApplication {
+            application { module() }
+            val client = createClient { install(ContentNegotiation) { json() } }
+            val response =
+                client.post("/signup") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"email":""")
+                }
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            assertEquals(ErrorResponse(listOf("malformed request body")), response.body())
         }
 }
