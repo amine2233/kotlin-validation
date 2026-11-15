@@ -5,7 +5,7 @@ import io.github.amine2233.validation.*
 /** Rules declared once, shared by the per-field UI checks and the whole-model `validate()`. */
 object SignUpRules {
     val email = Validator.email
-    val password = Validator.count(min = 8)
+    val password = Validator.length(min = 8)
     val age = Validator.range(min = 18)
 }
 

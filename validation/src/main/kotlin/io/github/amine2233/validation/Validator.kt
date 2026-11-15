@@ -8,7 +8,7 @@ package io.github.amine2233.validation
  * types skip `null` (see [ignoringNull]); combine with `!Validator.nil` to require a value.
  *
  *     Validator.email.validate("user@example.com")
- *     (Validator.count(min = 5) and Validator.alphanumeric).validate("hello1")
+ *     (Validator.length(min = 5) and Validator.alphanumeric).validate("hello1")
  */
 public class Validator<in T>(
     /** Readable name explaining what this validator does. Suitable for placing after `is` _and_ `is not`. */
@@ -22,7 +22,7 @@ public class Validator<in T>(
 
     override fun toString(): String = readable
 
-    /** Anchor for the built-in factories (`Validator.email`, `Validator.count(...)`, ...). */
+    /** Anchor for the built-in factories (`Validator.email`, `Validator.length(...)`, ...). */
     public companion object
 }
 

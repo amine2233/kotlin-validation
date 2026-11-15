@@ -30,7 +30,7 @@ internal fun sizeOf(data: Any): Int =
     }
 
 /** User-perceived characters, like Swift's `String.count`: "🤠" and "é" (e + combining accent) count as 1. */
-private fun graphemeCount(text: CharSequence): Int {
+internal fun graphemeCount(text: CharSequence): Int {
     val iterator = BreakIterator.getCharacterInstance().apply { setText(text.toString()) }
     var count = 0
     while (iterator.next() != BreakIterator.DONE) count++

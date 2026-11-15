@@ -62,7 +62,7 @@ data class User(
     val pet: Pet? = null,
 ) : Validatable<User> {
     override fun validations() = validations<User> {
-        add(User::name, Validator.count(min = 5) and Validator.alphanumeric)  // 5+ chars AND alphanumeric
+        add(User::name, Validator.length(min = 5) and Validator.alphanumeric) // 5+ chars AND alphanumeric
         add(User::age, Validator.range(min = 18))                              // 18 or older
         add(User::email, Validator.nil or Validator.email)                     // null, or a valid email
         add(User::luckyNumber, Validator.nil or Validator.oneOf(5, 7))         // null, or 5 / 7
@@ -90,7 +90,7 @@ Validators are plain values and can be used on their own:
 ```kotlin
 Validator.email.validate("user@example.com")
 Validator.range(-5..5).validate(4)
-(Validator.count(min = 8) and Validator.alphanumeric).validate("hunter2hunter2")
+(Validator.length(min = 8) and Validator.alphanumeric).validate("hunter2hunter2")
 ```
 
 ### Swift → Kotlin cheat sheet
@@ -99,10 +99,10 @@ Validator.range(-5..5).validate(4)
 |-------|--------|
 | `struct User: Validatable, Reflectable` | `data class User(...) : Validatable<User>` |
 | `static func validations() throws -> Validations<User>` | `override fun validations() = validations<User> { ... }` |
-| `try validations.add(\.name, .count(5...))` | `add(User::name, Validator.count(min = 5))` |
+| `try validations.add(\.name, .count(5...))` | `add(User::name, Validator.length(min = 5))` |
 | `try validations.add(\.name, at: ["first_name"], .ascii)` | `add(User::name, Validator.ascii, at = listOf("first_name"))` |
 | `try validations.add(\.name, "is vapor") { ... }` | `add(User::name, "is vapor") { ... }` |
-| `.count(5...)` / `.count(...10)` / `.count(5..<10)` | `count(min = 5)` / `count(max = 10)` / `count(5..<10)` |
+| `.count(5...)` / `.count(...10)` / `.count(5..<10)` | `length(min = 5)` / `length(max = 10)` / `length(5..<10)` for text, `size(...)` for collections |
 | `.range(18...)` / `.range(-5...5)` | `range(min = 18)` / `range(-5..5)` |
 | `.in(5, 7)` | `oneOf(5, 7)` |
 | `.nil` | `Validator.nil` |
@@ -234,13 +234,17 @@ add(SignUpRequest::email, IsAvailable.validator())
 | `Validator.ascii` | `String?` | ASCII characters only |
 | `Validator.alphanumeric` | `String?` | Letters and digits only |
 | `Validator.characterSet(set)` | `String?` | Characters within the given `CharacterSet` |
-| `Validator.count(range)` / `count(min=, max=)` | text, `Collection`, `Map`, `Array` | User-perceived character count (`"🤠"` is 1) or element count within bounds |
+| `Validator.length(range)` / `length(min=, max=)` | `CharSequence?` | User-perceived character count (`"🤠"` is 1) within bounds |
+| `Validator.size` / `mapSize` / `arraySize` (`range` or `min=, max=`) | `Collection?` / `Map?` / `Array?` | Element count within bounds |
 | `Validator.range(range)` / `range(min=, max=)` | `Comparable` | Value within bounds |
 | `Validator.empty` | text, `Collection`, `Map`, `Array` | Value is empty (`null` counts as empty) |
 | `Validator.oneOf(values)` | any | Value is one of the supplied values |
 | `Validator.nil` | any | Value is `null` |
 | `Validator.valid()` | `Validatable` | Nested model passes its own validations |
 | `AsyncValidator.valid()` | `AsyncValidatable` | Nested model passes its own sync and async validations |
+
+`Validator.count(...)` is deprecated: it accepts any type and only fails at runtime on the wrong one. Use
+`length`, `size`, `mapSize` or `arraySize`, which reject a wrong property type at compile time.
 
 Combinators: `a and b` (both run, both failures reported), `a or b`, `!a`, `a.ignoringNull()`.
 `CharacterSet.alphanumerics + CharacterSet.of("_-")` unions sets; `alphanumerics` follows Foundation
@@ -259,7 +263,7 @@ fun <T> evaluate(value: T, vararg rules: FieldRule<T>): String? =
     rules.firstOrNull { runCatching { it.validator.validate(value) }.isFailure }?.message
 
 // Front end: first failure per field, one message per text field
-evaluate(password, FieldRule(Validator.count(min = 8), "At least 8 characters."), FieldRule(Validator.alphanumeric, "Letters and digits only."))
+evaluate(password, FieldRule(Validator.length(min = 8), "At least 8 characters."), FieldRule(Validator.alphanumeric, "Letters and digits only."))
 
 // Back end: every failure in one shot
 request.validate() // throws ValidateErrors listing every field
