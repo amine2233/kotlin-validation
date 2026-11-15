@@ -27,9 +27,10 @@ blocks using the library; each item is a deliberate simplification of the first 
 6. **Localizable messages.** Messages are English strings built inside each validator. A
    `MessageProvider` hook (or returning message keys + arguments) is needed before the messages can
    be shown to end users on Android. The per-field `FieldRule.message` pattern sidesteps this today.
-7. **Nested property paths.** Swift's `\.pet.name` has no Kotlin equivalent; nested validation goes
-   through `Validator.valid()` or a custom closure. A small `path(User::pet, Pet::name)` helper
-   would restore single-rule nested paths.
+7. **Done: nested property paths.** `path(User::pet, Pet::name)` (`PropertyPath.kt`) joins two
+   properties into one rule reported at `pet.name`, skipped when `pet` is `null`, in both
+   `validations { }` and `asyncValidations { }`. Not done: a `User::pet / Pet::name` operator and
+   paths deeper than two properties.
 8. **`or` readable string.** Like the Swift original, `a or b` reads "X or is Y" and its error joins
    both failures with "and". Worth revisiting the wording together with item 6.
 9. **Stack-trace-free errors.** `ValidationError` is control flow, yet every throw fills a stack

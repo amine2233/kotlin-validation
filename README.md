@@ -102,6 +102,7 @@ Validator.range(-5..5).validate(4)
 | `try validations.add(\.name, .count(5...))` | `add(User::name, Validator.length(min = 5))` |
 | `try validations.add(\.name, at: ["first_name"], .ascii)` | `add(User::name, Validator.ascii, at = listOf("first_name"))` |
 | `try validations.add(\.name, "is vapor") { ... }` | `add(User::name, "is vapor") { ... }` |
+| `try validations.add(\.pet.name, .count(5...))` | `add(path(User::pet, Pet::name), Validator.length(min = 5))` |
 | `.count(5...)` / `.count(...10)` / `.count(5..<10)` | `length(min = 5)` / `length(max = 10)` / `length(5..<10)` for text, `size(...)` for collections |
 | `.range(18...)` / `.range(-5...5)` | `range(min = 18)` / `range(-5..5)` |
 | `.in(5, 7)` | `oneOf(5, 7)` |
@@ -127,6 +128,17 @@ Two things to know that differ from Swift:
 `Validator.valid()` runs the nested model's own validations and prefixes every failure with the
 property name, giving `pet.name is less than required minimum of 5 characters`. Any custom
 closure that throws a `ValidationError` is prefixed the same way.
+
+To check a single nested field with one rule, without running the nested model's own
+validations, join the two properties with `path(...)`:
+
+```kotlin
+add(User::pet, Validator.valid())                             // all of Pet's own rules
+add(path(User::pet, Pet::name), Validator.length(min = 5))     // just this one
+```
+
+Failures read `pet.name is less than required minimum of 5 characters` (path `["pet", "name"]`),
+`at = listOf(...)` overrides the path as usual, and when `pet` is `null` the rule is skipped.
 
 ### Custom validators
 
