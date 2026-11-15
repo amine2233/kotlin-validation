@@ -35,11 +35,9 @@ blocks using the library; each item is a deliberate simplification of the first 
    trace; a Compose form validates on each keystroke. Switching to the
    `RuntimeException(message, cause, false, false)` constructor removes that cost at the price of
    losing traces for genuinely unexpected validation errors.
-10. **Freeze `Validations` after build.** `add` stays callable after `validations { }` returns; a
-    concurrent `add`/`run` on a shared instance (e.g. one held in a companion object) races. Copying
-    the storage to an immutable list on first `run` — or a builder that returns an immutable
-    `Validations` — closes that. `AsyncValidations` carries the same caveat across both of its
-    collections, so any fix must cover it too.
+10. **Done: freeze `Validations` after build.** `validations { }` and `asyncValidations { }` now
+    return a frozen instance (both collections for `AsyncValidations`); `add` after build throws
+    `IllegalStateException`. Directly constructed instances are not frozen.
 11. **Parallel async rules.** `AsyncValidations.run` is sequential on purpose (no dependency, and
     the sync phase usually short-circuits it). Several independent remote checks would be faster
     with `coroutineScope` + `awaitAll` — but that needs `kotlinx-coroutines-core` at runtime, so it
