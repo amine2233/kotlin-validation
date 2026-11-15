@@ -6,11 +6,13 @@ package io.github.amine2233.validation
  *
  * Errors are immutable; see [BasicValidationError] for the default implementation to throw from custom
  * validators.
+ *
+ * Instances capture no stack trace and accept no suppressed exceptions, because they are used as control flow.
  */
 public abstract class ValidationError(
     /** Key path the failure happened at, outermost segment first. Empty means the root value. */
     public val path: List<String> = emptyList(),
-) : RuntimeException() {
+) : RuntimeException(null, null, false, false) {
     /** Human-readable description of the failure, including the key path. */
     public abstract val reason: String
 
