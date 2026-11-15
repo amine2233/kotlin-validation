@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.binary.compatibility.validator)
     `maven-publish`
 }
 
