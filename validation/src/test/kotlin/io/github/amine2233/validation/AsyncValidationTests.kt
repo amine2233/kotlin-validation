@@ -335,4 +335,32 @@ class AsyncValidationTests {
             assertEquals("email is already registered", error.reason)
             assertEquals(listOf(listOf("email")), error.flatten().map { it.path })
         }
+
+    @Test
+    fun asyncNestedPathFailureIsReportedAtTheDottedPath() =
+        runBlocking {
+            val notRex = AsyncValidator<String>("not rex") { if (it == "Rex") throw BasicValidationError("is rex") }
+            val validations = asyncValidations<AsyncPetOwner> { add(path(AsyncPetOwner::pet, Pet::name), notRex) }
+            validations.run(AsyncPetOwner(Pet(name = "Nina Simone", age = 4)))
+            val error = assertFailsWith<ValidateErrors> { validations.run(AsyncPetOwner(Pet(name = "Rex", age = 4))) }
+            assertEquals("pet.name is rex", error.reason)
+            assertEquals(listOf(listOf("pet", "name")), error.flatten().map { it.path })
+        }
+
+    @Test
+    fun asyncNestedPathIsSkippedWhenTheOuterValueIsNull() =
+        runBlocking {
+            var calls = 0
+            val validations =
+                asyncValidations<AsyncPetOwner> {
+                    add(path(AsyncPetOwner::pet, Pet::name), "is checked") { calls++ }
+                    add(path(AsyncPetOwner::pet, Pet::name), Validator.count(min = 5))
+                }
+            validations.run(AsyncPetOwner(pet = null))
+            assertEquals(0, calls)
+        }
 }
+
+private data class AsyncPetOwner(
+    val pet: Pet?,
+)

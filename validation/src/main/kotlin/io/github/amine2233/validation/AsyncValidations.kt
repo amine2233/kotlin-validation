@@ -97,6 +97,64 @@ public class AsyncValidations<M> {
     }
 
     /**
+     * Adds a synchronous [validator] for the nested property at [path], run in the first phase. Failures are
+     * reported at [at], which defaults to the dotted path. The rule is skipped when the outer value is `null`.
+     *
+     *     validations.add(path(SignUpRequest::address, Address::zip), Validator.count(min = 5))
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
+     */
+    public fun <T> add(
+        path: PropertyPath<M, T>,
+        validator: Validator<T>,
+        at: List<String> = path.names,
+    ) {
+        checkNotFrozen()
+        sync.add(path, validator, at)
+    }
+
+    /**
+     * Adds a suspending [validator] for the nested property at [path], run in the second phase. The rule is
+     * skipped when the outer value is `null`.
+     *
+     *     validations.add(path(SignUpRequest::contact, Contact::email), emailIsAvailable)
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
+     */
+    public fun <T> add(
+        path: PropertyPath<M, T>,
+        validator: AsyncValidator<T>,
+        at: List<String> = path.names,
+    ): Unit = add(path, "is ${validator.readable}", at) { validator.validate(it) }
+
+    /**
+     * Adds a custom suspending check for the nested property at [path], run in the second phase. Throw a
+     * [ValidationError] from [custom] when the value is invalid. The rule is skipped when the outer value is
+     * `null`.
+     *
+     *     validations.add(path(SignUpRequest::contact, Contact::email), "is not already registered") { email ->
+     *         if (api.isRegistered(email)) throw BasicValidationError("is already registered")
+     *     }
+     *
+     * @throws IllegalStateException if this instance is frozen (returned by [asyncValidations]).
+     */
+    public fun <T> add(
+        path: PropertyPath<M, T>,
+        readable: String,
+        at: List<String> = path.names,
+        custom: suspend (T) -> Unit,
+    ) {
+        add("${at.joinToString(".")}: $readable") { model ->
+            val resolved = path.resolve(model) ?: return@add
+            try {
+                custom(resolved.value)
+            } catch (error: ValidationError) {
+                throw error.prefixed(at)
+            }
+        }
+    }
+
+    /**
      * Adds a custom suspending check on the whole model, run in the second phase. Throw a [ValidationError]
      * from [custom] when the model is invalid.
      *

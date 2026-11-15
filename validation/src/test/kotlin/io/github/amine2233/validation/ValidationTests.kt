@@ -519,6 +519,60 @@ class ValidationTests {
         error.addSuppressed(IllegalStateException("suppressed"))
         assertTrue(error.suppressed.isEmpty())
     }
+
+    @Test
+    fun nestedPathPassesForAValidValue() {
+        val validations = validations<PetOwner> { add(path(PetOwner::pet, Pet::name), Validator.count(min = 5)) }
+        validations.run(PetOwner(Pet(name = "Zizek Pulaski", age = 4)))
+    }
+
+    @Test
+    fun nestedPathFailureIsReportedAtTheDottedPath() {
+        val validations = validations<PetOwner> { add(path(PetOwner::pet, Pet::name), Validator.count(min = 5)) }
+        val error = assertFailsWith<ValidateErrors> { validations.run(PetOwner(Pet(name = "Rex", age = 4))) }
+        assertEquals("pet.name is less than required minimum of 5 characters", error.reason)
+        assertEquals(listOf(listOf("pet", "name")), error.flatten().map { it.path })
+    }
+
+    @Test
+    fun nestedPathIsSkippedWhenTheOuterValueIsNull() {
+        var calls = 0
+        val validations =
+            validations<PetOwner> {
+                add(path(PetOwner::pet, Pet::name), "is checked") { calls++ }
+                add(path(PetOwner::pet, Pet::name), Validator.count(min = 5))
+            }
+        validations.run(PetOwner(pet = null))
+        assertEquals(0, calls)
+    }
+
+    @Test
+    fun nestedPathAtOverridesTheReportedPath() {
+        val validations =
+            validations<PetOwner> { add(path(PetOwner::pet, Pet::name), Validator.count(min = 5), at = listOf("pet_name")) }
+        val error = assertFailsWith<ValidateErrors> { validations.run(PetOwner(Pet(name = "Rex", age = 4))) }
+        assertEquals("pet_name is less than required minimum of 5 characters", error.reason)
+        assertEquals(listOf(listOf("pet_name")), error.flatten().map { it.path })
+    }
+
+    @Test
+    fun nestedPathToStringShowsTheDottedLabel() {
+        val validations = validations<PetOwner> { add(path(PetOwner::pet, Pet::name), Validator.count(min = 5)) }
+        assertTrue(validations.toString().lines().any { it.startsWith("pet.name: is ") })
+    }
+
+    @Test
+    fun nestedPathPassesANullableInnerValueThrough() {
+        val validations =
+            validations<NicknamedPetOwner> {
+                add(path(NicknamedPetOwner::pet, NicknamedPet::nickname), Validator.nil or Validator.count(min = 3))
+            }
+        validations.run(NicknamedPetOwner(NicknamedPet(nickname = null)))
+        validations.run(NicknamedPetOwner(NicknamedPet(nickname = "Rexy")))
+        val error = assertFailsWith<ValidateErrors> { validations.run(NicknamedPetOwner(NicknamedPet(nickname = "R"))) }
+        assertTrue(error.reason.startsWith("pet.nickname "))
+        assertEquals(listOf(listOf("pet", "nickname")), error.flatten().map { it.path })
+    }
 }
 
 class CustomValidationError(
@@ -562,3 +616,15 @@ data class Pet(
             add(Pet::age, Validator.range(min = 3))
         }
 }
+
+private data class PetOwner(
+    val pet: Pet?,
+)
+
+private data class NicknamedPet(
+    val nickname: String?,
+)
+
+private data class NicknamedPetOwner(
+    val pet: NicknamedPet?,
+)
