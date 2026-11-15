@@ -1,0 +1,50 @@
+public final class io/github/amine2233/validation/forms/FieldRule {
+	public fun <init> (Lio/github/amine2233/validation/Validator;Ljava/lang/String;)V
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getValidator ()Lio/github/amine2233/validation/Validator;
+}
+
+public abstract interface class io/github/amine2233/validation/forms/FieldValidation {
+	public fun getMessage ()Ljava/lang/String;
+	public fun isValid ()Z
+}
+
+public final class io/github/amine2233/validation/forms/FieldValidation$DefaultImpls {
+	public static fun getMessage (Lio/github/amine2233/validation/forms/FieldValidation;)Ljava/lang/String;
+	public static fun isValid (Lio/github/amine2233/validation/forms/FieldValidation;)Z
+}
+
+public final class io/github/amine2233/validation/forms/FieldValidation$Invalid : io/github/amine2233/validation/forms/FieldValidation {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/github/amine2233/validation/forms/FieldValidation$Invalid;
+	public static synthetic fun copy$default (Lio/github/amine2233/validation/forms/FieldValidation$Invalid;Ljava/lang/String;ILjava/lang/Object;)Lio/github/amine2233/validation/forms/FieldValidation$Invalid;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun isValid ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/amine2233/validation/forms/FieldValidation$None : io/github/amine2233/validation/forms/FieldValidation {
+	public static final field INSTANCE Lio/github/amine2233/validation/forms/FieldValidation$None;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun isValid ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/amine2233/validation/forms/FieldValidation$Valid : io/github/amine2233/validation/forms/FieldValidation {
+	public static final field INSTANCE Lio/github/amine2233/validation/forms/FieldValidation$Valid;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getMessage ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun isValid ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/amine2233/validation/forms/FieldValidationKt {
+	public static final fun evaluate (Ljava/lang/Object;[Lio/github/amine2233/validation/forms/FieldRule;)Lio/github/amine2233/validation/forms/FieldValidation;
+}
+

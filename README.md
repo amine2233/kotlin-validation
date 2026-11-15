@@ -22,7 +22,7 @@ mise run lint            # ktlint (mise run format fixes what it can)
 mise run cli             # run the CLI sample
 mise run ktor            # run the Ktor sample on :8080
 mise run android         # assemble the Android sample APK
-mise run publish_local   # publish io.github.amine2233:validation:0.1.0-SNAPSHOT to ~/.m2
+mise run publish_local   # publish io.github.amine2233:validation, :validation-ktor and :validation-forms 0.1.0-SNAPSHOT to ~/.m2
 ```
 
 ## Installation
@@ -269,17 +269,23 @@ Combinators: `a and b` (both run, both failures reported), `a or b`, `!a`, `a.ig
 ## Forms: field by field, and all at once
 
 The same `Validator` values drive a live Compose form and a server-side payload check — only the
-reporting strategy differs. `samples/android` shows the full pattern (`FieldRule`, `FieldValidation`,
-`evaluate`), condensed here:
+reporting strategy differs. The per-field side lives in the `validation-forms` module (plain JVM, no
+Android or Compose dependency): `FieldRule` pairs a validator with the message to show,
+`evaluate` runs the rules in order and returns a `FieldValidation` (`None`, `Valid` or
+`Invalid(message)`) for the first one that fails. `samples/android` shows the full pattern.
 
 ```kotlin
-class FieldRule<in T>(val validator: Validator<T>, val message: String)
+dependencies { implementation("io.github.amine2233:validation-forms:<version>") } // brings in validation too
+```
 
-fun <T> evaluate(value: T, vararg rules: FieldRule<T>): String? =
-    rules.firstOrNull { runCatching { it.validator.validate(value) }.isFailure }?.message
+```kotlin
+import io.github.amine2233.validation.*
+import io.github.amine2233.validation.forms.*
 
 // Front end: first failure per field, one message per text field
-evaluate(password, FieldRule(Validator.length(min = 8), "At least 8 characters."), FieldRule(Validator.alphanumeric, "Letters and digits only."))
+val state: FieldValidation =
+    evaluate(password, FieldRule(Validator.length(min = 8), "At least 8 characters."), FieldRule(Validator.alphanumeric, "Letters and digits only."))
+state.message // "At least 8 characters." for "ab!", null once valid
 
 // Back end: every failure in one shot
 request.validate() // throws ValidateErrors listing every field
@@ -357,6 +363,7 @@ messages and a submit that runs the whole-model validation.
 ```
 validation/          the library (io.github.amine2233.validation)
 validation-ktor/     Ktor RequestValidation helpers (io.github.amine2233.validation.ktor)
+validation-forms/    per-field form helpers: FieldRule, FieldValidation, evaluate (io.github.amine2233.validation.forms)
 samples/cli/         plain main(): validates two users, prints reasons
 samples/ktor/        POST /signup with RequestValidation + StatusPages error mapping + testApplication tests
 samples/android/     Compose form using shared rules (included only when ANDROID_HOME points to an SDK)
@@ -369,14 +376,15 @@ CI and releases come from [kotlin-ci-shared](https://github.com/amine2233/kotlin
 All logic lives in `mise.toml`:
 
 - `mise run test` / `mise run lint` — what the `CI` workflow runs on pull requests.
-- `mise run test` also checks the libraries' public API against `validation/api/validation.api`
-  and `validation-ktor/api/validation-ktor.api` (binary-compatibility-validator). For an
-  intentional API change, run `./gradlew apiDump` and commit the updated `.api` files.
+- `mise run test` also checks the libraries' public API against `validation/api/validation.api`,
+  `validation-ktor/api/validation-ktor.api` and `validation-forms/api/validation-forms.api`
+  (binary-compatibility-validator). For an intentional API change, run `./gradlew apiDump` (or one
+  module's, e.g. `./gradlew :validation-forms:apiDump`) and commit the updated `.api` files.
 - **Actions → Release → Run workflow** runs semantic-release (or automatically
   on every push to `main` when the repo variable `AUTO_RELEASE=true` is set): it tags
-  `vX.Y.Z`, updates `CHANGELOG.md`, publishes `io.github.amine2233:validation` and
-  `io.github.amine2233:validation-ktor` to GitHub Packages and creates the GitHub release
-  with the jars attached.
+  `vX.Y.Z`, updates `CHANGELOG.md`, publishes `io.github.amine2233:validation`,
+  `io.github.amine2233:validation-ktor` and `io.github.amine2233:validation-forms` to GitHub
+  Packages and creates the GitHub release with the jars attached.
 - `mise run release --dry-run` previews the next version locally.
 
 ## License

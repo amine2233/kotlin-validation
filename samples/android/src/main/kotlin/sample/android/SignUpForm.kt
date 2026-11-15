@@ -1,47 +1,13 @@
 package sample.android
 
 import io.github.amine2233.validation.*
+import io.github.amine2233.validation.forms.*
 
 /** Rules declared once, shared by the per-field UI checks and the whole-model `validate()`. */
 object SignUpRules {
     val email = Validator.email
     val password = Validator.length(min = 8)
     val age = Validator.range(min = 18)
-}
-
-/** The state of one form field. `None` means "nothing to say yet" (untouched), not "valid". */
-sealed interface FieldValidation {
-    data object None : FieldValidation
-
-    data object Valid : FieldValidation
-
-    data class Invalid(
-        override val message: String,
-    ) : FieldValidation
-
-    val isValid: Boolean get() = this !is Invalid
-    val message: String? get() = (this as? Invalid)?.message
-}
-
-/** One rule: a validator plus the message shown when it fails. */
-class FieldRule<in T>(
-    val validator: Validator<T>,
-    val message: String,
-)
-
-/** Runs [rules] in order and reports the first failure: the first unmet rule is the one to fix first. */
-fun <T> evaluate(
-    value: T,
-    vararg rules: FieldRule<T>,
-): FieldValidation {
-    for (rule in rules) {
-        try {
-            rule.validator.validate(value)
-        } catch (_: ValidationError) {
-            return FieldValidation.Invalid(rule.message)
-        }
-    }
-    return FieldValidation.Valid
 }
 
 data class SignUpForm(

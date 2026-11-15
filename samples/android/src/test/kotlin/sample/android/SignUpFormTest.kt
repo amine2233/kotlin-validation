@@ -1,6 +1,7 @@
 package sample.android
 
 import io.github.amine2233.validation.*
+import io.github.amine2233.validation.forms.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

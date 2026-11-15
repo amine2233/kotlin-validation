@@ -21,9 +21,9 @@ blocks using the library; each item is a deliberate simplification of the first 
 4. **Done: Ktor `RequestValidation` integration.** The `validation-ktor` module ships
    `validatable<M>()` and `asyncValidatable<M>()` for `install(RequestValidation) { }`, turning a
    `ValidationError` into one reason per flattened failure while the core stays dependency-free.
-5. **Form helpers in the library.** `FieldRule` / `FieldValidation` / `evaluate` currently live in
-   the Android sample (mirroring the Swift DocC article). Promoting them to a `validation-forms`
-   module would remove copy-paste between Android and Compose Multiplatform apps.
+5. **Done: form helpers in the library.** `FieldRule` / `FieldValidation` / `evaluate` moved out of
+   the Android sample into the `validation-forms` module (package `io.github.amine2233.validation.forms`,
+   published as `io.github.amine2233:validation-forms`), a plain JVM jar the Android sample now uses.
 6. **Localizable messages.** Messages are English strings built inside each validator. A
    `MessageProvider` hook (or returning message keys + arguments) is needed before the messages can
    be shown to end users on Android. The per-field `FieldRule.message` pattern sidesteps this today.
